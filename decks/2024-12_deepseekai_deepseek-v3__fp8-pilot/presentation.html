@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FP8 Mixed-Precision Training — DeepSeek-V3 Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   VIEWPORT FITTING: MANDATORY BASE STYLES
+   =========================================== */
+
+html, body {
+    height: 100%;
+    overflow-x: hidden;
+}
+
+html {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+}
+
+.slide {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.slide-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-height: 100%;
+    overflow: hidden;
+    padding: var(--slide-padding);
+}
+
+:root {
+    --title-size: clamp(1.5rem, 5vw, 4rem);
+    --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+    --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+    --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+    --small-size: clamp(0.65rem, 1vw, 0.875rem);
+
+    --slide-padding: clamp(1rem, 4vw, 4rem);
+    --content-gap: clamp(0.5rem, 2vw, 2rem);
+    --element-gap: clamp(0.25rem, 1vw, 1rem);
+}
+
+.card, .container, .content-box {
+    max-width: min(90vw, 1000px);
+    max-height: min(80vh, 700px);
+}
+
+.feature-list, .bullet-list {
+    gap: clamp(0.4rem, 1vh, 1rem);
+}
+
+.feature-list li, .bullet-list li {
+    font-size: var(--body-size);
+    line-height: 1.4;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+
+img, .image-container {
+    max-width: 100%;
+    max-height: min(50vh, 400px);
+    object-fit: contain;
+}
+
+@media (max-height: 700px) {
+    :root {
+        --slide-padding: clamp(0.75rem, 3vw, 2rem);
+        --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+        --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+        --h2-size: clamp(1rem, 3vw, 1.75rem);
+    }
+}
+
+@media (max-height: 600px) {
+    :root {
+        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+        --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+        --title-size: clamp(1.1rem, 4vw, 2rem);
+        --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+    }
+
+    .nav-dots, .keyboard-hint, .decorative {
+        display: none;
+    }
+}
+
+@media (max-height: 500px) {
+    :root {
+        --slide-padding: clamp(0.4rem, 2vw, 1rem);
+        --title-size: clamp(1rem, 3.5vw, 1.5rem);
+        --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+        --body-size: clamp(0.65rem, 1vw, 0.85rem);
+    }
+}
+
+@media (max-width: 600px) {
+    :root {
+        --title-size: clamp(1.25rem, 7vw, 2.5rem);
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* ===========================================
+   THEME: SWISS MODERN — precision & data-forward
+   =========================================== */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg: #FFFFFF;
+    --ink: #0B0B0C;
+    --muted: #5B5F66;
+    --line: #DEDFE1;
+    --panel: #F4F4F5;
+    --signal: #E8262B;
+    --dark-bg: #0B0B0C;
+    --dark-ink: #F5F5F5;
+    --dark-muted: #9A9DA3;
+    --font-head: 'Archivo', sans-serif;
+    --font-body: 'Nunito', sans-serif;
+}
+
+body {
+    font-family: var(--font-body);
+    color: var(--ink);
+    background: var(--bg);
+}
+
+.slide { background: var(--bg); }
+.slide.dark { background: var(--dark-bg); color: var(--dark-ink); }
+
+h1, h2, h3, .eyebrow, .stat-num {
+    font-family: var(--font-head);
+    letter-spacing: -0.01em;
+}
+
+.eyebrow {
+    font-size: var(--small-size);
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--signal);
+    margin-bottom: var(--element-gap);
+}
+
+.dark .eyebrow { color: var(--signal); }
+
+h1 {
+    font-size: var(--title-size);
+    font-weight: 900;
+    line-height: 1.05;
+}
+
+h2 {
+    font-size: var(--h2-size);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: var(--content-gap);
+}
+
+h3 {
+    font-size: var(--h3-size);
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+p.subtitle {
+    font-size: clamp(0.95rem, 1.8vw, 1.35rem);
+    color: var(--muted);
+    font-weight: 600;
+    max-width: 46ch;
+    margin-top: var(--element-gap);
+}
+
+.dark p.subtitle { color: var(--dark-muted); }
+
+/* --- visible-grid backdrop (Swiss Modern signature) --- */
+.grid-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(var(--line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: clamp(48px, 6vw, 96px) clamp(48px, 6vw, 96px);
+    opacity: 0.5;
+    z-index: 0;
+}
+
+.dark .grid-backdrop {
+    background-image:
+        linear-gradient(#232326 1px, transparent 1px),
+        linear-gradient(90deg, #232326 1px, transparent 1px);
+    opacity: 0.7;
+}
+
+.slide-content { position: relative; z-index: 1; }
+
+/* --- byte-grid motif: bit layout of a float format --- */
+.byte-grid { display: flex; flex-direction: column; gap: clamp(0.5rem, 1.2vh, 0.9rem); }
+.byte-row { display: flex; align-items: center; gap: clamp(0.6rem, 1.5vw, 1.1rem); }
+.byte-label {
+    font-family: var(--font-head);
+    font-weight: 800;
+    font-size: var(--small-size);
+    width: clamp(4.5rem, 8vw, 6.5rem);
+    flex-shrink: 0;
+}
+.byte-bits { display: flex; gap: 3px; }
+.bit {
+    width: clamp(10px, 1.3vw, 16px);
+    height: clamp(10px, 1.3vw, 16px);
+    border-radius: 2px;
+}
+.bit-sign { background: var(--muted); }
+.bit-exp { background: var(--signal); }
+.bit-man { background: var(--ink); }
+.dark .bit-man { background: var(--dark-ink); }
+.byte-note { font-size: var(--small-size); color: var(--muted); font-weight: 700; }
+.dark .byte-note { color: var(--dark-muted); }
+
+.legend { display: flex; gap: clamp(0.75rem, 2vw, 1.5rem); flex-wrap: wrap; margin-top: clamp(0.5rem, 1.5vh, 1rem); }
+.legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: var(--small-size); font-weight: 700; color: var(--muted); }
+.dark .legend-item { color: var(--dark-muted); }
+.legend-item .bit { width: 10px; height: 10px; }
+
+/* --- content layout helpers --- */
+.bullet-list { list-style: none; display: flex; flex-direction: column; }
+.bullet-list li { position: relative; padding-left: 1.3em; }
+.bullet-list li::before {
+    content: "";
+    position: absolute; left: 0; top: 0.55em;
+    width: 6px; height: 6px; background: var(--signal); border-radius: 1px;
+}
+.bullet-list strong { color: var(--ink); }
+.dark .bullet-list strong { color: var(--dark-ink); }
+
+.two-col { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(1.25rem, 3vw, 3rem); align-items: center; flex: 1; min-height: 0; }
+@media (max-height: 640px) { .two-col { grid-template-columns: 1fr; } }
+.two-col .col-text { min-width: 0; }
+.two-col .col-figure { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+.two-col .col-figure img { max-height: min(48vh, 420px); border: 1px solid var(--line); }
+@media (max-height: 560px) { .two-col .col-figure { display: none; } .two-col { grid-template-columns: 1fr; } }
+
+.caption { font-size: var(--small-size); color: var(--muted); font-weight: 600; margin-top: 0.5rem; text-align: center; max-width: 46ch; }
+
+.card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: clamp(0.75rem, 2vw, 1.5rem); }
+@media (max-width: 700px) { .card-grid { grid-template-columns: 1fr; } }
+.card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    padding: clamp(0.9rem, 2vw, 1.6rem);
+    display: flex; flex-direction: column; gap: 0.5rem;
+    max-height: none;
+}
+.card h3 { font-size: clamp(0.95rem, 1.7vw, 1.2rem); }
+.card p { font-size: var(--small-size); color: var(--muted); font-weight: 600; line-height: 1.45; }
+
+.stat-row { display: flex; gap: clamp(1.25rem, 4vw, 3.5rem); flex-wrap: wrap; }
+.stat { flex: 1; min-width: 140px; }
+.stat-num { font-size: clamp(2rem, 5.5vw, 4rem); font-weight: 900; color: var(--signal); line-height: 1; }
+.stat-label { font-size: var(--small-size); font-weight: 700; color: var(--muted); margin-top: 0.35rem; }
+
+.footer-cite {
+    position: absolute; bottom: clamp(0.9rem, 2.5vh, 1.5rem); left: var(--slide-padding);
+    font-size: var(--small-size); color: var(--muted); font-weight: 600; z-index: 1;
+}
+.dark .footer-cite { color: var(--dark-muted); }
+
+.progress-index {
+    position: fixed; bottom: clamp(0.9rem, 2.5vh, 1.5rem); right: clamp(1rem, 3vw, 2.25rem);
+    font-family: var(--font-head); font-weight: 800; font-size: var(--small-size);
+    color: var(--muted); z-index: 50; letter-spacing: 0.05em;
+}
+
+.nav-dots {
+    position: fixed; top: 50%; right: clamp(0.75rem, 2vw, 1.5rem); transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 0.5rem; z-index: 50;
+}
+.nav-dots button {
+    width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--muted);
+    background: transparent; padding: 0; cursor: pointer; opacity: 0.4; transition: opacity .2s, transform .2s, background .2s, border-color .2s;
+}
+.nav-dots button.active { opacity: 1; transform: scale(1.35); background: var(--signal); border-color: var(--signal); }
+
+@media (max-width: 600px) {
+    .nav-dots { display: none; }
+}
+
+.keyboard-hint {
+    position: absolute; bottom: clamp(0.9rem, 2.5vh, 1.5rem); right: var(--slide-padding);
+    font-size: var(--small-size); color: var(--dark-muted); font-weight: 700; z-index: 1;
+}
+
+/* --- reveal-on-enter --- */
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+.reveal.r2 { transition-delay: 0.08s; }
+.reveal.r3 { transition-delay: 0.16s; }
+.reveal.r4 { transition-delay: 0.24s; }
+
+a { color: inherit; }
+</style>
+</head>
+<body>
+<nav class="nav-dots" aria-label="Slide navigation"></nav>
+<div class="progress-index" aria-hidden="true"></div>
+
+<main>
+
+<!-- SLIDE 1 — TITLE -->
+<section class="slide dark" id="slide-1" aria-label="Title">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">DeepSeek-V3 Deep Dive · Section 1 of 5</p>
+    <h1 class="reveal r2">FP8 Mixed-Precision<br>Training</h1>
+    <p class="subtitle reveal r3">Training a 671B-parameter model in 8-bit floating point &mdash; within 0.25% of BF16 loss, at roughly 2&times; the compute throughput.</p>
+
+    <div class="byte-grid reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
+      <div class="byte-row">
+        <span class="byte-label">BF16</span>
+        <div class="byte-bits">
+          <span class="bit bit-sign"></span>
+          <span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span>
+          <span class="bit bit-man"></span><span class="bit bit-man"></span><span class="bit bit-man"></span><span class="bit bit-man"></span><span class="bit bit-man"></span><span class="bit bit-man"></span><span class="bit bit-man"></span>
+        </div>
+        <span class="byte-note">16 bits &middot; prior standard</span>
+      </div>
+      <div class="byte-row">
+        <span class="byte-label">E4M3</span>
+        <div class="byte-bits">
+          <span class="bit bit-sign"></span>
+          <span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span><span class="bit bit-exp"></span>
+          <span class="bit bit-man"></span><span class="bit bit-man"></span><span class="bit bit-man"></span>
+        </div>
+        <span class="byte-note">8 bits &middot; DeepSeek-V3's FP8</span>
+      </div>
+    </div>
+    <div class="legend reveal r4">
+      <span class="legend-item"><span class="bit bit-sign"></span>sign</span>
+      <span class="legend-item"><span class="bit bit-exp"></span>exponent</span>
+      <span class="legend-item"><span class="bit bit-man"></span>mantissa</span>
+    </div>
+  </div>
+  <p class="footer-cite">DeepSeek-AI, 2024 &middot; arXiv:2412.19437</p>
+</section>
+
+<!-- SLIDE 2 — BEFORE -->
+<section class="slide" id="slide-2" aria-label="Before">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">Before</p>
+    <h2 class="reveal r2">BF16 was mandatory &mdash; naive FP8 breaks at scale</h2>
+    <div class="card-grid">
+      <div class="card reveal r2">
+        <h3>Frontier scale, zero precedent</h3>
+        <p>Every LLM &gt;100B params trained in BF16. FP8 had only been shown small-scale &mdash; nobody had validated it end-to-end at extreme scale.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>A dynamic-range trap</h3>
+        <p>E4M3: decent precision, narrow range. E5M2: wide range, coarse precision. At scale, activations and gradients contain outliers neither format alone survives.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>One outlier poisons the tensor</h3>
+        <p>A single scale factor per whole tensor is dominated by its largest element &mdash; it crushes every normal-magnitude value toward zero.</p>
+      </div>
+      <div class="card reveal r4">
+        <h3>Hardware caps it further</h3>
+        <p>Hopper Tensor Cores accumulate FP8 matmuls at only ~14-bit internal precision &mdash; a ceiling that hurts before quantization quality even enters.</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">FP8 Mixed-Precision Training</p>
+</section>
+
+<!-- SLIDE 3 — FIX PART 1 -->
+<section class="slide" id="slide-3" aria-label="The fix, part 1">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 1/3</p>
+    <h2 class="reveal r2">Not everything runs in FP8</h2>
+    <div class="two-col">
+      <div class="col-text">
+        <ul class="bullet-list" style="font-size: var(--body-size);">
+          <li class="reveal r2"><strong>Only the 3 compute-dense GEMMs go FP8</strong> &mdash; Fprop (forward), Dgrad, Wgrad (activation/weight backward) &mdash; roughly doubling compute vs. BF16.</li>
+          <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Precision-sensitive, low-FLOP ops stay BF16/FP32</strong> &mdash; embeddings, output head, MoE gating, RMSNorm, attention.</li>
+          <li class="reveal r3" style="margin-top: var(--element-gap);">These dominate accuracy sensitivity but are a tiny fraction of FLOPs &mdash; protecting them is nearly free.</li>
+        </ul>
+      </div>
+      <div class="col-figure reveal r4">
+        <img src="assets/figure6_mixed_precision_framework.png" alt="Mixed-precision framework diagram showing FP8 GEMM operations (Fprop, Dgrad, Wgrad) versus higher-precision components">
+        <p class="caption">Fprop / Dgrad / Wgrad dtype flow &mdash; DeepSeek-V3 Technical Report</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">FP8 Mixed-Precision Training</p>
+</section>
+
+<!-- SLIDE 4 — FIX PART 2 -->
+<section class="slide" id="slide-4" aria-label="The fix, part 2">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 2/3</p>
+    <h2 class="reveal r2">Kill the outlier at its source</h2>
+    <div class="two-col">
+      <div class="col-text">
+        <ul class="bullet-list" style="font-size: var(--body-size);">
+          <li class="reveal r2"><strong>Fine-grained quantization</strong> &mdash; activations scaled per 1&times;128 tile, weights per 128&times;128 block. An outlier now only inflates its own small group's scale.</li>
+          <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Online quantization</strong> &mdash; max-abs computed on-the-fly per tile/block, not a rolling historical max.</li>
+          <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>FP32 accumulation promotion</strong> &mdash; partial products promoted to FP32 every N<sub>C</sub>=128 elements along the inner dimension, recovering near-FP32 accumulation on FP8 Tensor Cores.</li>
+        </ul>
+      </div>
+      <div class="col-figure reveal r4">
+        <img src="assets/figure7_finegrained_quant_accum.png" alt="Diagram of fine-grained tile-and-block quantization and increasing accumulation precision">
+        <p class="caption">Fine-grained quantization (a) &amp; increasing accumulation precision (b)</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">FP8 Mixed-Precision Training</p>
+</section>
+
+<!-- SLIDE 5 — FIX PART 3 -->
+<section class="slide" id="slide-5" aria-label="The fix, part 3">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 3/3</p>
+    <h2 class="reveal r2">E4M3 everywhere, and compressed storage</h2>
+    <div class="card-grid">
+      <div class="card reveal r2">
+        <h3>E4M3 everywhere</h3>
+        <p>Per-tile scaling shares exponent bits within a group, restoring the dynamic range E4M3 lacks alone. So every GEMM keeps E4M3's extra mantissa bit &mdash; precision the old hybrid recipe (E4M3 fwd / E5M2 bwd) sacrificed on backward passes.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>Compressed storage &amp; comms</h3>
+        <p>AdamW moments in BF16 &middot; cached activations in FP8 (half the memory) &middot; activations cast to FP8 before the MoE all-to-all dispatch &middot; the combine step stays BF16 to protect summed outputs &middot; attention-backward gradients use a custom E5M6 format.</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">FP8 Mixed-Precision Training</p>
+</section>
+
+<!-- SLIDE 6 — WHAT IT BUYS US -->
+<section class="slide" id="slide-6" aria-label="What it buys us">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">What it buys us</p>
+    <h2 class="reveal r2">Stable at 671B scale, and roughly 2&times; faster</h2>
+    <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
+      <div class="stat reveal r2"><div class="stat-num">&lt;0.25%</div><div class="stat-label">loss error vs. BF16, over ~1T tokens</div></div>
+      <div class="stat reveal r3"><div class="stat-num">~2&times;</div><div class="stat-label">compute on FP8 GEMMs</div></div>
+      <div class="stat reveal r4"><div class="stat-num">~2&times;</div><div class="stat-label">memory reduction on cached activations + moments</div></div>
+    </div>
+    <div class="two-col">
+      <div class="col-text">
+        <ul class="bullet-list" style="font-size: var(--body-size);">
+          <li class="reveal r4">First demonstration FP8 is stable end-to-end at frontier (671B MoE) scale.</li>
+          <li class="reveal r4" style="margin-top: var(--element-gap);">A software precursor to hardware microscaling on NVIDIA Blackwell.</li>
+        </ul>
+      </div>
+      <div class="col-figure reveal r4">
+        <img src="assets/figure10_bf16_vs_fp8_loss.png" alt="Line chart comparing BF16 and FP8 training loss curves for 16B and 230B DeepSeek-V2 ablation models">
+        <p class="caption">BF16 vs. FP8 loss &mdash; 16B &amp; 230B DeepSeek-V2 ablations</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">FP8 Mixed-Precision Training</p>
+</section>
+
+<!-- SLIDE 7 — WHY A DS/DE SHOULD CARE -->
+<section class="slide dark" id="slide-7" aria-label="Why a DS/DE should care">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">Why a DS/DE should care</p>
+    <h2 class="reveal r2">Precision is a per-location decision, not a global switch</h2>
+    <ul class="bullet-list" style="font-size: clamp(0.95rem, 2vw, 1.3rem); max-width: 62ch;">
+      <li class="reveal r2" style="margin-bottom: var(--content-gap);">Quantize aggressively where FLOPs live; protect the few numerically sensitive ops &mdash; gating, softmax, layernorm statistics.</li>
+      <li class="reveal r3" style="margin-bottom: var(--content-gap);">Fight outliers with <strong>fine-grained (block-wise) scaling + high-precision accumulation</strong>, not one scale per tensor.</li>
+      <li class="reveal r4">&ldquo;Granularity beats a global scale&rdquo; applies any time you quantize models &mdash; for training or inference.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 1 of 5</p>
+</section>
+
+</main>
+
+<script>
+class Presentation {
+  constructor() {
+    this.slides = Array.from(document.querySelectorAll('.slide'));
+    this.current = 0;
+    this.dotsContainer = document.querySelector('.nav-dots');
+    this.progressEl = document.querySelector('.progress-index');
+    this.buildDots();
+    this.updateProgress();
+    this.bindKeys();
+    this.bindWheel();
+    this.bindTouch();
+    this.observeSlideChange();
+    this.observeReveal();
+  }
+
+  buildDots() {
+    this.slides.forEach((slide, i) => {
+      const btn = document.createElement('button');
+      btn.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+      if (i === 0) btn.classList.add('active');
+      btn.addEventListener('click', () => this.goTo(i));
+      this.dotsContainer.appendChild(btn);
+    });
+  }
+
+  updateProgress() {
+    const pad = n => String(n).padStart(2, '0');
+    this.progressEl.textContent = pad(this.current + 1) + ' / ' + pad(this.slides.length);
+    Array.from(this.dotsContainer.children).forEach((btn, i) => {
+      btn.classList.toggle('active', i === this.current);
+    });
+  }
+
+  goTo(i) {
+    const idx = Math.max(0, Math.min(i, this.slides.length - 1));
+    this.slides[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  bindKeys() {
+    window.addEventListener('keydown', e => {
+      if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) {
+        e.preventDefault();
+        this.goTo(this.current + 1);
+      } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) {
+        e.preventDefault();
+        this.goTo(this.current - 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        this.goTo(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        this.goTo(this.slides.length - 1);
+      }
+    });
+  }
+
+  bindWheel() {
+    let locked = false;
+    window.addEventListener('wheel', e => {
+      if (locked || Math.abs(e.deltaY) < 24) return;
+      locked = true;
+      this.goTo(this.current + (e.deltaY > 0 ? 1 : -1));
+      setTimeout(() => { locked = false; }, 700);
+    }, { passive: true });
+  }
+
+  bindTouch() {
+    let startY = null;
+    window.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+    window.addEventListener('touchend', e => {
+      if (startY === null) return;
+      const dy = startY - e.changedTouches[0].clientY;
+      if (Math.abs(dy) > 50) this.goTo(this.current + (dy > 0 ? 1 : -1));
+      startY = null;
+    }, { passive: true });
+  }
+
+  observeSlideChange() {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+          this.current = this.slides.indexOf(entry.target);
+          this.updateProgress();
+        }
+      });
+    }, { threshold: [0.6] });
+    this.slides.forEach(s => io.observe(s));
+  }
+
+  observeReveal() {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('is-visible');
+      });
+    }, { threshold: 0.2 });
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => new Presentation());
+</script>
+</body>
+</html>

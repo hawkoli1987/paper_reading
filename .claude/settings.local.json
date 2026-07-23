@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pdftotext webfetch-1784687087830-dv8r2z.pdf -)",
+      "Bash(python3 -c \"import pypdf\")",
+      "Bash(python3 -c \"import fitz\")",
+      "Bash(python3 -c \"import pypdf; print\\('pypdf ok'\\)\")",
+      "Bash(python3 -c \"import PyPDF2; print\\('PyPDF2 ok'\\)\")",
+      "Bash(python3 -c \"import fitz; print\\('fitz ok'\\)\")",
+      "Bash(python3 -c \"import pdfplumber\")",
+      "Bash(uv --version)",
+      "Bash(uv python *)",
+      "Bash(uv venv *)",
+      "Bash(VIRTUAL_ENV=.venv uv pip install python-pptx pymupdf pdfplumber markitdown Pillow requests)",
+      "Bash(.venv/bin/python -c \"import pptx, fitz, pdfplumber, PIL, markitdown; print\\('venv OK — python', __import__\\('sys'\\).version.split\\(\\)[0]\\); print\\('python-pptx', pptx.__version__\\); print\\('pymupdf', fitz.__doc__.split\\(\\)[1] if fitz.__doc__ else 'ok'\\)\")",
+      "Bash(curl -sL -o papers/2024-12_deepseekai_deepseek-v3.pdf https://arxiv.org/pdf/2412.19437)",
+      "Bash(node -e \"require\\('pptxgenjs'\\); console.log\\('pptxgenjs OK'\\)\")",
+      "Bash(mkdir -p /private/tmp/claude-501/-Users-yuli-Documents-paper-reading/77978563-ef63-40d0-bae5-c723376e788d/scratchpad/fp8-pilot)",
+      "Read(//Users/yuli/.claude/plugins/cache/anthropic-agent-skills/document-skills/**)",
+      "Bash(find / -maxdepth 4 -iname \"node\" -type f)",
+      "Bash(brew --prefix)",
+      "Read(//opt/homebrew/**)",
+      "Read(//Users/yuli/**)",
+      "Bash(find / -maxdepth 4 -iname \"*.app\")"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/hooks/on-summary-edit.js\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/hooks/require-audit.js\""
+          }
+        ]
+      }
+    ]
+  }
+}

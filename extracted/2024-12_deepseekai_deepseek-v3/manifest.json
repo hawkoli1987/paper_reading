@@ -1,0 +1,508 @@
+{
+  "slug": "2024-12_deepseekai_deepseek-v3",
+  "generator_version": "1",
+  "source_pdf": "papers/2024-12_deepseekai_deepseek-v3.pdf",
+  "pdf_sha256": "812a3fd645c80725354de9d831a6785503007a60681461407f64e97305fa9330",
+  "pdf_bytes": 1887366,
+  "page_count": 53,
+  "sections": [
+    {
+      "num": null,
+      "title": "DeepSeek-V3 Technical Report",
+      "page": 1,
+      "heading_confidence": "font"
+    },
+    {
+      "num": null,
+      "title": "Abstract",
+      "page": 1,
+      "heading_confidence": "named"
+    },
+    {
+      "num": null,
+      "title": "arXiv:2412.19437v2  [cs.CL]  18 Feb 2025",
+      "page": 1,
+      "heading_confidence": "font"
+    },
+    {
+      "num": null,
+      "title": "Introduction",
+      "page": 2,
+      "heading_confidence": "named"
+    },
+    {
+      "num": "1",
+      "title": "Introduction",
+      "page": 4,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "2",
+      "title": "Architecture",
+      "page": 6,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "2.1",
+      "title": "Basic Architecture",
+      "page": 6,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "2.1.1",
+      "title": "Multi-Head Latent Attention",
+      "page": 7,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "2.1.2",
+      "title": "DeepSeekMoE with Auxiliary-Loss-Free Load Balancing",
+      "page": 8,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "2.2",
+      "title": "Multi-Token Prediction",
+      "page": 10,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": null,
+      "title": "\u00b7\u00b7\u00b7",
+      "page": 10,
+      "heading_confidence": "font"
+    },
+    {
+      "num": "3",
+      "title": "Infrastructures",
+      "page": 11,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.1",
+      "title": "Compute Clusters",
+      "page": 11,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.2",
+      "title": "Training Framework",
+      "page": 12,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.2.1",
+      "title": "DualPipe and Computation-Communication Overlap",
+      "page": 12,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.2.2",
+      "title": "Efficient Implementation of Cross-Node All-to-All Communication",
+      "page": 13,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "20",
+      "title": "SMs into 10 communication channels. During the dispatching process, (1) IB sending, (2)",
+      "page": 14,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.2.3",
+      "title": "Extremely Memory Saving with Minimal Overhead",
+      "page": 14,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.3",
+      "title": "FP8 Training",
+      "page": 14,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": null,
+      "title": "\u03a3",
+      "page": 15,
+      "heading_confidence": "font"
+    },
+    {
+      "num": null,
+      "title": "\u03a3",
+      "page": 15,
+      "heading_confidence": "font"
+    },
+    {
+      "num": "3.3.1",
+      "title": "Mixed Precision Framework",
+      "page": 15,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": null,
+      "title": "\u03a3",
+      "page": 15,
+      "heading_confidence": "font"
+    },
+    {
+      "num": "3.3.2",
+      "title": "Improved Precision from Quantization and Multiplication",
+      "page": 16,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.3.3",
+      "title": "Low-Precision Storage and Communication",
+      "page": 18,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.4",
+      "title": "Inference and Deployment",
+      "page": 18,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.4.1",
+      "title": "Prefilling",
+      "page": 19,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.4.2",
+      "title": "Decoding",
+      "page": 19,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.5",
+      "title": "Suggestions on Hardware Design",
+      "page": 20,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.5.1",
+      "title": "Communication Hardware",
+      "page": 20,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "3.5.2",
+      "title": "Compute Hardware",
+      "page": 20,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4",
+      "title": "Pre-Training",
+      "page": 21,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.1",
+      "title": "Data Construction",
+      "page": 21,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.2",
+      "title": "Hyper-Parameters",
+      "page": 22,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.3",
+      "title": "Long Context Extension",
+      "page": 23,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.4",
+      "title": "Evaluations",
+      "page": 24,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.4.1",
+      "title": "Evaluation Benchmarks",
+      "page": 24,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.4.2",
+      "title": "Evaluation Results",
+      "page": 24,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.5",
+      "title": "Discussion",
+      "page": 26,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.5.1",
+      "title": "Ablation Studies for Multi-Token Prediction",
+      "page": 26,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.5.2",
+      "title": "Ablation Studies for the Auxiliary-Loss-Free Balancing Strategy",
+      "page": 26,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "4.5.3",
+      "title": "Batch-Wise Load Balance VS. Sequence-Wise Load Balance",
+      "page": 27,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5",
+      "title": "Post-Training",
+      "page": 28,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.1",
+      "title": "Supervised Fine-Tuning",
+      "page": 28,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.2",
+      "title": "Reinforcement Learning",
+      "page": 29,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.2.1",
+      "title": "Reward Model",
+      "page": 29,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.2.2",
+      "title": "Group Relative Policy Optimization",
+      "page": 30,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.3",
+      "title": "Evaluations",
+      "page": 30,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.3.1",
+      "title": "Evaluation Settings",
+      "page": 30,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.3.2",
+      "title": "Standard Evaluation",
+      "page": 31,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.3.3",
+      "title": "Open-Ended Evaluation",
+      "page": 33,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.3.4",
+      "title": "DeepSeek-V3 as a Generative Reward Model",
+      "page": 33,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.4",
+      "title": "Discussion",
+      "page": 34,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.4.1",
+      "title": "Distillation from DeepSeek-R1",
+      "page": 34,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.4.2",
+      "title": "Self-Rewarding",
+      "page": 34,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "5.4.3",
+      "title": "Multi-Token Prediction Evaluation",
+      "page": 35,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "6",
+      "title": "Conclusion, Limitations, and Future Directions",
+      "page": 35,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": null,
+      "title": "References",
+      "page": 36,
+      "heading_confidence": "named"
+    },
+    {
+      "num": "2018",
+      "title": "URL http://arxiv.org/abs/1803.05457.",
+      "page": 37,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "2378",
+      "title": "Association for Computational Linguistics, 2019. doi: 10.18653/V1/N19-1246. URL",
+      "page": 37,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": "7.3476145",
+      "title": "URL http://dx.doi.org/10.1145/3458817.3476145.",
+      "page": 40,
+      "heading_confidence": "numbered"
+    },
+    {
+      "num": null,
+      "title": "Appendix",
+      "page": 45,
+      "heading_confidence": "named"
+    }
+  ],
+  "tables": [
+    {
+      "label": "Table 1",
+      "page": 5,
+      "caption": "| Training costs of DeepSeek-V3, assuming the rental price of H800 is $2 per GPU hour."
+    },
+    {
+      "label": "Table 1",
+      "page": 5,
+      "caption": ", achieved through our optimized co-design of algorithms, frameworks, and hardware."
+    },
+    {
+      "label": "Table 2",
+      "page": 13,
+      "caption": "| Comparison of pipeline bubbles and memory usage across different pipeline parallel"
+    },
+    {
+      "label": "Table 3",
+      "page": 25,
+      "caption": "| Comparison among DeepSeek-V3-Base and other representative open-source base"
+    },
+    {
+      "label": "Table 4",
+      "page": 26,
+      "caption": "| Ablation results for the MTP strategy. The MTP strategy consistently enhances the"
+    },
+    {
+      "label": "Table 5",
+      "page": 27,
+      "caption": "| Ablation results for the auxiliary-loss-free balancing strategy. Compared with the"
+    },
+    {
+      "label": "Table 6",
+      "page": 31,
+      "caption": "| Comparison between DeepSeek-V3 and other representative chat models. All models"
+    },
+    {
+      "label": "Table 6",
+      "page": 31,
+      "caption": "presents the evaluation results, showcasing that DeepSeek-V3 stands as the best-"
+    },
+    {
+      "label": "Table 7",
+      "page": 33,
+      "caption": "| English open-ended conversation evaluations. For AlpacaEval 2.0, we use the length-"
+    },
+    {
+      "label": "Table 8",
+      "page": 34,
+      "caption": "| Performances of GPT-4o, Claude-3.5-sonnet and DeepSeek-V3 on RewardBench."
+    },
+    {
+      "label": "Table 9",
+      "page": 34,
+      "caption": "| The contribution of distillation from DeepSeek-R1. The evaluation settings of Live-"
+    },
+    {
+      "label": "Table 9",
+      "page": 34,
+      "caption": "demonstrates the effectiveness of the distillation data, showing significant improve-"
+    }
+  ],
+  "figures": [
+    {
+      "label": "Figure 1",
+      "page": 1,
+      "caption": "| Benchmark performance of DeepSeek-V3 and its counterparts."
+    },
+    {
+      "label": "Figure 2",
+      "page": 7,
+      "caption": "| Illustration of the basic architecture of DeepSeek-V3. Following DeepSeek-V2, we"
+    },
+    {
+      "label": "Figure 3",
+      "page": 10,
+      "caption": "| Illustration of our Multi-Token Prediction (MTP) implementation. We keep the"
+    },
+    {
+      "label": "Figure 4",
+      "page": 12,
+      "caption": "| Overlapping strategy for a pair of individual forward and backward chunks (the"
+    },
+    {
+      "label": "Figure 5",
+      "page": 13,
+      "caption": "| Example DualPipe scheduling for 8 PP ranks and 20 micro-batches in two directions."
+    },
+    {
+      "label": "Figure 6",
+      "page": 15,
+      "caption": "| The overall mixed precision framework with FP8 data format. For clarification, only"
+    },
+    {
+      "label": "Figure 7",
+      "page": 16,
+      "caption": "| (a) We propose a fine-grained quantization method to mitigate quantization errors"
+    },
+    {
+      "label": "Figure 8",
+      "page": 23,
+      "caption": "| Evaluation results on the \u201dNeedle In A Haystack\u201d (NIAH) tests. DeepSeek-V3"
+    },
+    {
+      "label": "Figure 9",
+      "page": 28,
+      "caption": "| Expert load of auxiliary-loss-free and auxiliary-loss-based models on three domains in"
+    },
+    {
+      "label": "Figure 10",
+      "page": 47,
+      "caption": "| Loss curves comparison between BF16 and FP8 training. Results are smoothed by"
+    },
+    {
+      "label": "Figure 10",
+      "page": 53,
+      "caption": "| Expert load of auxiliary-loss-free and auxiliary-loss-based models on three domains"
+    }
+  ],
+  "warnings": [
+    "Figure 1: no image block found, used fallback band crop \u2014 verify visually",
+    "Figure 3: no image block found, used fallback band crop \u2014 verify visually",
+    "Figure 4: no image block found, used fallback band crop \u2014 verify visually",
+    "Figure 5: no image block found, used fallback band crop \u2014 verify visually"
+  ],
+  "source": "arxiv-html:2412.19437"
+}

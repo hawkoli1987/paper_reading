@@ -1,0 +1,8 @@
+scripts/node_modules/
+.venv/
+.DS_Store
+.claude/.audit-pending/*
+!.claude/.audit-pending/.gitkeep
+extracted/*/figures/
+__pycache__/
+*.pyc

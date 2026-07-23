@@ -1,0 +1,8 @@
+{
+  "name": "paper-reading-scripts",
+  "private": true,
+  "description": "Local tooling for this workspace (not a published package). QA driver for frontend-slides decks.",
+  "dependencies": {
+    "puppeteer-core": "^23.0.0"
+  }
+}
