@@ -95,7 +95,7 @@ function main() {
     if (!fs.existsSync(markerPath)) {
       fs.writeFileSync(
         markerPath,
-        `# Pending audit: ${slug}\nTarget: summaries/${slug}.md\nSource: papers/${slug}.pdf\n`
+        `# Pending audit: ${slug}\nChanged: summaries/${slug}.md and/or decks/${slug}*/presentation.html\n`
       );
     }
 

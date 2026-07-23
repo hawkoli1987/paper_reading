@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Stop hook: blocks turn-end while any summary edit recorded by
- * on-summary-edit.js hasn't been resolved by a claim-verifier run.
+ * Stop hook: blocks turn-end while any summary or deck edit recorded by
+ * on-summary-edit.js / on-deck-edit.js hasn't been resolved by a
+ * claim-verifier run.
  *
  * A marker at .claude/.audit-pending/<slug>.md is "resolved" once
  * audit/<slug>.md has been written (or re-written) AFTER the marker — i.e.
@@ -10,6 +11,10 @@
  * block. The coordinator's other escape hatch is deleting the marker itself
  * (`rm .claude/.audit-pending/<slug>.md`) when a change is judged to be a
  * pure reformat/reword with no claim to verify.
+ *
+ * One marker file can hold both "## Change recorded" (summary) and
+ * "## Deck change recorded" (deck) sections for the same paper — a single
+ * claim-verifier run covering both clears the whole marker.
  *
  * Loop-guarded via stop_hook_active — never blocks twice in a row.
  */
@@ -70,16 +75,23 @@ function main() {
   );
 
   const reason =
-    `${unresolved.length} summary edit(s) are pending claim verification before this turn can end.\n\n` +
+    `${unresolved.length} summary/deck edit(s) are pending claim verification before this turn can end.\n\n` +
     parts.join('\n\n') +
-    `\n\nFor each summary above: split the changed claims into (a) those tagged ` +
-    `[src: ...] — provenance-grounded, hand them to claim-verifier to log as ` +
-    `ACCEPTED-CITED (no re-check needed), and (b) untagged claims — forward these ` +
-    `to claim-verifier to actively verify against papers/<slug>.pdf or web search. ` +
+    `\n\nFor each marker above, resolve every section it contains:\n` +
+    `- "## Change recorded" sections (summaries/<slug>.md edits): split the changed ` +
+    `claims into (a) those tagged [src: ...] — provenance-grounded, hand to ` +
+    `claim-verifier to log as ACCEPTED-CITED (no re-check needed), and (b) untagged ` +
+    `claims — forward to claim-verifier to actively verify against papers/<slug>.pdf ` +
+    `or web search.\n` +
+    `- "## Deck change recorded" sections (decks/<slug>*/presentation.html edits): ` +
+    `hand ONLY the recorded new/changed hunks to claim-verifier, scoped to just those — ` +
+    `never the whole deck — and check them against summaries/<slug>.md, not the PDF ` +
+    `(the deck's job is faithful transcription of an already-verified summary).\n\n` +
     `claim-verifier always appends a run to audit/<slug>.md, which is what clears ` +
-    `the block. If a change altered no claim at all (pure reformat/rewording), ` +
-    `clear it directly instead: rm .claude/.audit-pending/<slug>.md. ` +
-    `Do not end the turn until every summary above is either audited or cleared.`;
+    `the block (one run can cover both kinds of sections for the same slug). If a ` +
+    `change altered no claim at all (pure reformat/rewording/styling), clear it ` +
+    `directly instead: rm .claude/.audit-pending/<slug>.md. ` +
+    `Do not end the turn until every marker above is either audited or cleared.`;
 
   console.log(JSON.stringify({ decision: 'block', reason }));
   process.exit(0);

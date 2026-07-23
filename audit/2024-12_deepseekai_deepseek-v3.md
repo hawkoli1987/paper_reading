@@ -167,3 +167,40 @@ Target: `summaries/2024-12_deepseekai_deepseek-v3.md` · Source: `papers/2024-12
 | 6 | Lineage evidence: DeepSeekMoE-16B outperformed LLaMA2-7B at ~39.6% of its compute | CONFIRMED | Web search of the DeepSeekMoE paper (arXiv:2401.06066) confirms verbatim: "With only 39.6% of computations, DeepSeekMoE 16B outperforms LLaMA2 7B on the majority of benchmarks." Corrected wording now matches the source exactly (supersedes prior run's "matched... ~40%" understatement). |
 
 **Summary:** 6 claims checked — 3 accepted-cited, 1 confirmed, 2 uncertain, 0 incorrect.
+
+## Run 2026-07-23 — scope: deck `decks/2024-12_deepseekai_deepseek-v3/presentation.html`, slides 8–14 (Section 2 of 5, "Fine-Grained MoE & Expert Load Balancing")
+Target: `decks/2024-12_deepseekai_deepseek-v3/presentation.html` · Source: `summaries/2024-12_deepseekai_deepseek-v3.md` (lines 109–190)
+
+No `[src:]` tagging convention applies to deck HTML, so every claim below was actively verified against the summary (the deck's job here is faithful transcription, not re-derivation from the paper).
+
+| # | Claim (slide) | Verdict | Evidence |
+|---|---|---|---|
+| 1 | Slide 8 subtitle: 256 routed experts (+1 shared), 8 activated/token, balanced via learnable per-expert bias, not an aux loss | CONFIRMED | Matches summary line 111 TL;DR near-verbatim. |
+| 2 | Slide 8 footer: "DeepSeek-AI, 2024 · arXiv:2412.19437" | CONFIRMED | Matches summary header/citation metadata (already verified in full-document run above). |
+| 3 | Slide 9 card "Coarse experts under-specialize": classic MoE top-1/2 routing, wide-mix experts, duplicated general knowledge, few combinations per token | CONFIRMED | Matches summary lines 115–121. |
+| 4 | Slide 9 card "Routing collapse": jointly-learned router, rich-get-richer dynamic, most experts starve, wasted params | CONFIRMED | Matches summary lines 122–125. |
+| 5 | Slide 9 card "The aux-loss remedy has a real cost": interference gradient, enough weight to balance measurably degrades quality | CONFIRMED | Matches summary lines 126–129. |
+| 6 | Slide 9 card "Device & communication cost": distributed all-to-all, cross-node traffic, GPU stragglers, token dropping under capacity limits | CONFIRMED | Matches summary lines 130–134. |
+| 7 | Slide 10 stats: 671B total / 37B activated per token; 256+1 experts per MoE layer; 8 activated per token | CONFIRMED | Matches summary lines 138, 141. |
+| 8 | Slide 10 bullet: fine-grained experts + shared-expert isolation, 8-of-256 combinations, shared expert absorbs common knowledge | CONFIRMED | Matches summary lines 142–144. |
+| 9 | Slide 10 bullet: sigmoid affinity router `s = Sigmoid(uᵀ·eᵢ)`, switched from softmax (V2) "since softmax over 256 experts leaves individual gates vanishingly small and gradient-starved" | INCORRECT | Transcription drift: the summary (lines 147–148) explicitly labels this rationale as the writer's own speculation — "Likely rationale (**not stated by the paper**): softmax over 256 experts makes individual gates vanishingly small and gradient-starved" — a hedge the prior audit run above independently flagged UNCERTAIN for the same reason. The deck drops the hedge and states it with a causal "since," presenting it as an established fact from the paper. The router formula and softmax→sigmoid switch themselves are correctly transcribed; only the epistemic status of the rationale is misrepresented. |
+| 10 | Slide 11 bullet: learnable bias bᵢ, added for top-K selection only, routing picks top-8 of s+bᵢ, gating weight still from original s | CONFIRMED | Matches summary lines 150–152. |
+| 11 | Slide 11 bullet: feedback controller adjusts bias per step (±γ), γ=0.001 for first 14.3T tokens then γ=0 | CONFIRMED | Matches summary lines 153–157. |
+| 12 | Slide 11 bullet: steers which experts are chosen without injecting a distortion gradient into the LM loss | CONFIRMED | Matches summary line 156. |
+| 13 | Slide 11 bullet: tiny complementary sequence-wise loss (α=0.0001), rules out pathological within-sequence imbalance, too small to perturb LM objective | CONFIRMED | Matches summary lines 158–160. |
+| 14 | Slide 12 card "Node-limited routing": each token's 8 experts confined to ≤4 nodes, caps cross-node all-to-all, lets compute/comm overlap | CONFIRMED | Matches summary line 162. |
+| 15 | Slide 12 card "Expert-to-device allocation": balances per-GPU compute/memory at placement time | CONFIRMED | Matches summary line 163. |
+| 16 | Slide 12 card "Redundant experts at deployment": dynamic redundancy duplicates hot experts, +32 redundant experts in prefill EP32 | CONFIRMED | Matches summary line 164. |
+| 17 | Slide 12 card "No token dropping": in training or inference, nothing overflows a capacity limit | CONFIRMED | Matches summary line 165. |
+| 18 | Slide 13 stat: 5.5% of 671B active per token (37B) | CONFIRMED | Matches summary line 170. |
+| 19 | Slide 13 stat: BBH +2.0 (39.3 vs 37.3) | CONFIRMED | Matches summary line 172; arithmetic (39.3−37.3=2.0) checks out. |
+| 20 | Slide 13 stat: GSM8K +2.5 (29.6 vs 27.1) | CONFIRMED | Matches summary line 173; arithmetic (29.6−27.1=2.5) checks out. |
+| 21 | Slide 13 stat: MMLU +0.8 (51.8 vs 51.0) | CONFIRMED | Matches summary line 174; arithmetic (51.8−51.0=0.8) checks out. |
+| 22 | Slide 13 bullet: ablation on two 16B MoE models (~1.33T tokens), comparable balance, removing interference gradient recovers quality and specialization | CONFIRMED | Matches summary lines 171, 178. |
+| 23 | Slide 13 bullet: balance enforced batch-wise not per-sequence, domain-relevant experts can dominate, clearer/less-redundant specialization | CONFIRMED | Matches summary line 179. |
+| 24 | Slide 14 bullets: two distinct load-balancing problems (statistical balance via controller-tuned bias; physical balance via node-limited routing/placement/redundant experts) | CONFIRMED | Matches summary lines 184–186. |
+| 25 | Slide 14 bullet: deeper lesson — move a constraint fighting the main objective out of the loss into a non-distorting control mechanism | CONFIRMED | Matches summary line 187. |
+| 26 | Slide 14 footer: "DeepSeek-V3 Technical Report · arXiv:2412.19437 · Section 2 of 5" | CONFIRMED | Citation matches summary header metadata; "Section 2 of 5" matches the deck's own section numbering (this is the second of five summary sections), consistent with slide 8's identical eyebrow label. |
+
+**Summary:** 26 claims checked — 0 accepted-cited, 25 confirmed, 0 uncertain, 1 incorrect.
+</content>

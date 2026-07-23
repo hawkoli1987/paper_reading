@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FP8 Mixed-Precision Training — DeepSeek-V3 Deep Dive</title>
+<title>DeepSeek-V3 Deep Dive</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -251,6 +251,14 @@ p.subtitle {
 .dark .bit-man { background: var(--dark-ink); }
 .byte-note { font-size: var(--small-size); color: var(--muted); font-weight: 700; }
 .dark .byte-note { color: var(--dark-muted); }
+
+/* --- expert-grid motif: sampled activation pattern for MoE routing --- */
+.expert-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; width: clamp(160px, 18vw, 220px); }
+.expert-cell { aspect-ratio: 1; border-radius: 2px; background: var(--line); }
+.dark .expert-cell { background: #232326; }
+.expert-cell.active { background: var(--signal); }
+.expert-cell.shared { background: var(--ink); }
+.dark .expert-cell.shared { background: var(--dark-ink); }
 
 .legend { display: flex; gap: clamp(0.75rem, 2vw, 1.5rem); flex-wrap: wrap; margin-top: clamp(0.5rem, 1.5vh, 1rem); }
 .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: var(--small-size); font-weight: 700; color: var(--muted); }
@@ -512,6 +520,158 @@ a { color: inherit; }
     </ul>
   </div>
   <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 1 of 5</p>
+</section>
+
+<!-- SLIDE 8 — SECTION 2 TITLE -->
+<section class="slide dark" id="slide-8" aria-label="Section 2 title">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">DeepSeek-V3 Deep Dive &middot; Section 2 of 5</p>
+    <h1 class="reveal r2">Fine-Grained MoE &amp;<br>Expert Load Balancing</h1>
+    <p class="subtitle reveal r3">256 small routed experts (+1 shared), 8 activated per token, kept balanced by a learnable per-expert bias &mdash; not an auxiliary loss that taxes quality.</p>
+
+    <div class="expert-grid reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
+      <span class="expert-cell shared"></span>
+      <span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span>
+      <span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell active"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span>
+      <span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell active"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span>
+      <span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell active"></span><span class="expert-cell"></span>
+      <span class="expert-cell active"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span>
+      <span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell active"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span>
+      <span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell"></span><span class="expert-cell active"></span><span class="expert-cell"></span><span class="expert-cell"></span>
+    </div>
+    <div class="legend reveal r4">
+      <span class="legend-item"><span class="bit expert-cell shared" style="width:10px;height:10px;"></span>shared expert (always on)</span>
+      <span class="legend-item"><span class="bit expert-cell active" style="width:10px;height:10px;"></span>routed &amp; activated (sampled)</span>
+    </div>
+  </div>
+  <p class="footer-cite">DeepSeek-AI, 2024 &middot; arXiv:2412.19437</p>
+</section>
+
+<!-- SLIDE 9 — BEFORE -->
+<section class="slide" id="slide-9" aria-label="Before">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">Before</p>
+    <h2 class="reveal r2">Coarse experts, collapsing routers, and a loss that fights the model</h2>
+    <div class="card-grid">
+      <div class="card reveal r2">
+        <h3>Coarse experts under-specialize</h3>
+        <p>Classic MoE: a few large experts, top-1/2 routing. Each absorbs a wide mix of knowledge, general knowledge gets redundantly duplicated, and few expert combinations are even possible per token.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>Routing collapse</h3>
+        <p>The router is learned jointly with the LM &mdash; a rich-get-richer dynamic. Popular experts draw more tokens, more gradient, get picked even more; most experts starve and their parameters go to waste.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>The aux-loss remedy has a real cost</h3>
+        <p>Standard fix: an auxiliary load-balancing loss pushing assignments toward uniform. That's an interference gradient &mdash; enough weight to guarantee balance measurably degrades model quality.</p>
+      </div>
+      <div class="card reveal r4">
+        <h3>Device &amp; communication cost</h3>
+        <p>Under expert parallelism, routing becomes a distributed all-to-all. Spread-out experts explode cross-node traffic; imbalance causes GPU stragglers and forces token dropping under capacity limits.</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">Fine-Grained MoE &amp; Expert Load Balancing</p>
+</section>
+
+<!-- SLIDE 10 — FIX PART 1 -->
+<section class="slide" id="slide-10" aria-label="The fix, part 1">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 1/3</p>
+    <h2 class="reveal r2">Many small experts, one always-on generalist</h2>
+    <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
+      <div class="stat reveal r2"><div class="stat-num">671B</div><div class="stat-label">total params, 37B activated per token</div></div>
+      <div class="stat reveal r3"><div class="stat-num">256+1</div><div class="stat-label">routed experts + 1 shared, per MoE layer</div></div>
+      <div class="stat reveal r4"><div class="stat-num">8</div><div class="stat-label">routed experts activated per token</div></div>
+    </div>
+    <ul class="bullet-list" style="font-size: var(--body-size); max-width: 68ch;">
+      <li class="reveal r3"><strong>Fine-grained experts + shared-expert isolation</strong> &mdash; splitting into many small experts makes 8-of-256 yield combinatorially more expert combinations, so specialization gets finer; the always-on shared expert absorbs common knowledge so routed experts don't each re-learn it.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Sigmoid affinity router</strong> &mdash; token&ndash;expert affinity <code>s = Sigmoid(uᵀ&middot;eᵢ)</code>, switched from softmax (V2) &mdash; likely because softmax over 256 experts leaves individual gates vanishingly small and gradient-starved (rationale not stated by the paper).</li>
+    </ul>
+  </div>
+  <p class="footer-cite">Fine-Grained MoE &amp; Expert Load Balancing</p>
+</section>
+
+<!-- SLIDE 11 — FIX PART 2 -->
+<section class="slide" id="slide-11" aria-label="The fix, part 2">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 2/3</p>
+    <h2 class="reveal r2">Balance via a controller, not a loss &mdash; the headline</h2>
+    <ul class="bullet-list" style="font-size: var(--body-size); max-width: 72ch;">
+      <li class="reveal r2"><strong>Learnable bias bᵢ per expert</strong>, added to the affinity for top-K selection only &mdash; routing picks the top-8 of <code>s + bᵢ</code>, but the gating weight multiplying an expert's output still comes from the original <code>s</code> (no bias).</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>A feedback controller adjusts the bias every step</strong> &mdash; overloaded expert: decrease bias by &gamma;; underloaded expert: increase bias by &gamma;. Bias update speed &gamma; = 0.001 for the first 14.3T tokens, then &gamma; = 0.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">This steers <em>which</em> experts get chosen to fix balance &mdash; without injecting a distortion gradient into the LM loss.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">A tiny complementary sequence-wise loss (&alpha; = 0.0001) only rules out pathological imbalance within a single sequence &mdash; too small to meaningfully perturb the LM objective.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">Fine-Grained MoE &amp; Expert Load Balancing</p>
+</section>
+
+<!-- SLIDE 12 — FIX PART 3 -->
+<section class="slide" id="slide-12" aria-label="The fix, part 3">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 3/3</p>
+    <h2 class="reveal r2">Balancing the physical system, too</h2>
+    <div class="card-grid">
+      <div class="card reveal r2">
+        <h3>Node-limited routing</h3>
+        <p>Each token's 8 experts are confined to &le;4 nodes, capping cross-node all-to-all traffic and letting compute/communication overlap.</p>
+      </div>
+      <div class="card reveal r2">
+        <h3>Expert-to-device allocation</h3>
+        <p>Balances per-GPU compute and memory load at placement time.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>Redundant experts at deployment</h3>
+        <p>Dynamic redundancy duplicates hot experts &mdash; e.g. +32 redundant experts in prefill EP32 &mdash; so no single GPU becomes the latency bottleneck.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>No token dropping</h3>
+        <p>In training or inference &mdash; the balance is real, so nothing overflows a capacity limit.</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">Fine-Grained MoE &amp; Expert Load Balancing</p>
+</section>
+
+<!-- SLIDE 13 — WHAT IT BUYS US -->
+<section class="slide" id="slide-13" aria-label="What it buys us">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">What it buys us</p>
+    <h2 class="reveal r2">Frontier capacity at 5.5% active params &mdash; and it beats the aux-loss baseline</h2>
+    <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
+      <div class="stat reveal r2"><div class="stat-num">5.5%</div><div class="stat-label">of 671B active per token (37B)</div></div>
+      <div class="stat reveal r3"><div class="stat-num">+2.0</div><div class="stat-label">BBH vs. aux-loss baseline (39.3 vs 37.3)</div></div>
+      <div class="stat reveal r3"><div class="stat-num">+2.5</div><div class="stat-label">GSM8K vs. aux-loss baseline (29.6 vs 27.1)</div></div>
+      <div class="stat reveal r4"><div class="stat-num">+0.8</div><div class="stat-label">MMLU vs. aux-loss baseline (51.8 vs 51.0)</div></div>
+    </div>
+    <ul class="bullet-list" style="font-size: var(--body-size); max-width: 72ch;">
+      <li class="reveal r4">Ablation on two 16B MoE models (~1.33T tokens), comparable balance in both &mdash; removing the interference gradient recovers model quality <em>and</em> expert specialization that auxiliary losses suppress.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">Balance is enforced batch-wise, not per-sequence &mdash; a single-domain sequence isn't forced to spread uniformly, so domain-relevant experts can dominate, yielding clearer, less-redundant specialization.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">Fine-Grained MoE &amp; Expert Load Balancing</p>
+</section>
+
+<!-- SLIDE 14 — WHY A DS/DE SHOULD CARE -->
+<section class="slide dark" id="slide-14" aria-label="Why a DS/DE should care">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">Why a DS/DE should care</p>
+    <h2 class="reveal r2">Two balancing problems hide inside &ldquo;MoE&rdquo; &mdash; they need different tools</h2>
+    <ul class="bullet-list" style="font-size: clamp(0.95rem, 2vw, 1.3rem); max-width: 66ch;">
+      <li class="reveal r2" style="margin-bottom: var(--content-gap);"><strong>Statistical balance across experts</strong> (avoid collapse) &mdash; solved here by a controller-tuned bias, not a loss.</li>
+      <li class="reveal r3" style="margin-bottom: var(--content-gap);"><strong>Physical balance across GPUs/nodes</strong> (avoid stragglers &amp; comms blowup) &mdash; solved by node-limited routing, expert placement, and redundant experts.</li>
+      <li class="reveal r4">The deeper lesson: when a regularization loss fights your main objective, consider moving the constraint out of the loss and into a control mechanism that doesn't distort gradients.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 2 of 5</p>
 </section>
 
 </main>

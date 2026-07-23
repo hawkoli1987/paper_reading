@@ -32,6 +32,10 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/hooks/on-summary-edit.js\""
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/hooks/on-deck-edit.js\""
           }
         ]
       }
