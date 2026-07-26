@@ -1,5 +1,64 @@
+# Pending audit: 2024-12_deepseekai_deepseek-v3
+Changed: summaries/2024-12_deepseekai_deepseek-v3.md and/or decks/2024-12_deepseekai_deepseekai_deepseekai_deepseekai_deepseek-v3*/presentation.html
+
+## Change recorded 2026-07-24T04:21:32.364Z
+- OLD: "  - Uses **online quantization** (max-abs computed on-the-fly per tile/block) rather than a rolling historical max [src: §3.3.2]"
+  NEW: "  - Uses **online quantization** (max-abs computed on-the-fly per tile/block) [src: §3.3.2]\n    - Rather than a rolling historical max [src: §3.3.2] [ref-only]"
+
+## Change recorded 2026-07-24T04:21:36.251Z
+- OLD: "  - The **combine** step stays **BF16** to protect the summed expert outputs [src: §3.3.3]"
+  NEW: "  - The **combine** step stays **BF16** to protect the summed expert outputs [src: §3.3.3] [ref-only]"
+
+## Change recorded 2026-07-24T04:21:43.361Z
+- OLD: "- **Fine-grained experts + shared-expert isolation** (from DeepSeekMoE) [src: §2.1.2]"
+  NEW: "- **Fine-grained experts + shared-expert isolation** (from DeepSeekMoE) [src: §2.1.2] [viz: Fig. 2 — DeepSeekMoE routed + shared-expert structure]"
+
+## Change recorded 2026-07-24T04:21:46.878Z
+- OLD: "  - Switched from softmax (V2) to **sigmoid** [src: §2.1.2]\n    - Likely rationale (not stated by the paper): softmax over 256 experts makes individual gates vanishingly small and gradient-starved"
+  NEW: "  - Switched from softmax (V2) to **sigmoid** [src: §2.1.2]\n    - Likely rationale (not stated by the paper): softmax over 256 experts makes individual gates vanishingly small and gradient-starved [ref-only]"
+
+## Change recorded 2026-07-24T04:21:51.409Z
+- OLD: "- **Auxiliary-loss-free balancing** (the headline) [src: §2.1.2]"
+  NEW: "- **Auxiliary-loss-free balancing** (the headline) [src: §2.1.2] [viz: ext — https://arxiv.org/abs/2408.15664 — Wang et al. bias feedback-control loop (Fig. 1), the method DeepSeek-V3 §2.1.2 cites and adopts]"
+
+## Change recorded 2026-07-24T04:21:55.957Z
+- OLD: "  - Bias update speed **γ = 0.001** for the first 14.3T tokens, then **γ = 0** [src: §4.2]\n- **Tiny complementary sequence-wise loss** (weight **α = 0.0001**) [src: §2.1.2, §4.2]\n  - Only to rule out pathological imbalance *within a single sequence* [src: §2.1.2]\n  - Small enough not to meaningfully perturb the LM objective [src: §4.2]"
+  NEW: "  - Bias update speed **γ = 0.001** for the first 14.3T tokens, then **γ = 0** [src: §4.2] [ref-only]\n- **Tiny complementary sequence-wise loss** (weight **α = 0.0001**) [src: §2.1.2, §4.2] [ref-only]\n  - Only to rule out pathological imbalance *within a single sequence* [src: §2.1.2]\n  - Small enough not to meaningfully perturb the LM objective [src: §4.2]"
+
+## Change recorded 2026-07-24T04:22:00.981Z
+- OLD: "  - **Expert-to-device allocation** balances per-GPU compute/memory [src: §3.4]\n  - At deployment: **redundant experts / dynamic redundancy** duplicate hot experts (e.g. **+32 redundant experts** in prefill EP32) so no single GPU becomes the latency bottleneck [src: §3.4.1]"
+  NEW: "  - **Expert-to-device allocation** balances per-GPU compute/memory [src: §3.4] [ref-only]\n  - At deployment: **redundant experts / dynamic redundancy** duplicate hot experts (e.g. **+32 redundant experts** in prefill EP32) so no single GPU becomes the latency bottleneck [src: §3.4.1] [ref-only]"
+
+## Change recorded 2026-07-24T04:22:06.101Z
+- OLD: "  - Balance is enforced **batch-wise, not per-sequence** — a single-domain sequence isn't forced to spread uniformly, so domain-relevant experts can dominate → clearer, less-redundant specialization [src: §4.5.3]"
+  NEW: "  - Balance is enforced **batch-wise, not per-sequence** — a single-domain sequence isn't forced to spread uniformly, so domain-relevant experts can dominate → clearer, less-redundant specialization [src: §4.5.3] [viz: Fig. 9 — expert load, aux-loss-free vs aux-loss-based across 3 domains]"
+
+## Deck change recorded 2026-07-24T04:22:10.987Z (decks/2024-12_deepseekai_deepseek-v3/presentation.html)
+- OLD: "          <li class=\"reveal r3\" style=\"margin-top: var(--element-gap);\"><strong>Online quantization</strong> &mdash; max-abs computed on-the-fly per tile/block, not a rolling historical max.</li>"
+  NEW: "          <li class=\"reveal r3\" style=\"margin-top: var(--element-gap);\"><strong>Online quantization</strong> &mdash; max-abs computed on-the-fly per tile/block.</li>"
+
+## Deck change recorded 2026-07-24T04:22:15.024Z (decks/2024-12_deepseekai_deepseek-v3/presentation.html)
+- OLD: "        <p>AdamW moments in BF16 &middot; cached activations in FP8 (half the memory) &middot; activations cast to FP8 before the MoE all-to-all dispatch &middot; the combine step stays BF16 to protect summed outputs.</p>"
+  NEW: "        <p>AdamW moments in BF16 &middot; cached activations in FP8 (half the memory) &middot; activations cast to FP8 before the MoE all-to-all dispatch.</p>"
+
+## Deck change recorded 2026-07-24T04:22:55.099Z (decks/2024-12_deepseekai_deepseek_v3/presentation.html)
+- OLD: "    <p class=\"eyebrow reveal\">The DeepSeek-V3 fix &middot; 1/3</p>\n    <h2 class=\"reveal r2\">Many small experts, one always-on generalist</h2>\n    <div class=\"stat-row\" style=\"margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);\">\n      <div class=\"stat reveal r2\"><div class=\"stat-num\">671B</div><div class=\"stat-label\">total params, 37B activated per token</div></div>\n      <div class=\"stat reveal r3\"><div class=\"stat-num\">256+1</div><div class=\"stat-label\">routed experts + 1 shared, per MoE layer</div"
+  NEW: "    <p class=\"eyebrow reveal\">The DeepSeek-V3 fix &middot; 1/3</p>\n    <h2 class=\"reveal r2\">Many small experts, one always-on generalist</h2>\n    <div class=\"two-col fig-wide\">\n      <div class=\"col-text\">\n        <div class=\"stat-row\" style=\"margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);\">\n          <div class=\"stat reveal r2\"><div class=\"stat-num\">671B</div><div class=\"stat-label\">total params, 37B activated per token</div></div>\n          <div class=\"stat reveal r3\"><div class=\"stat-num\">256+"
+
+## Deck change recorded 2026-07-24T04:23:07.663Z (decks/2024-12_deepseekai_deepseekai_deepseek_v3/presentation.html)
+- OLD: "    <p class=\"eyebrow reveal\">The DeepSeek-V3 fix &middot; 2/3</p>\n    <h2 class=\"reveal r2\">Balance via a controller, not a loss &mdash; the headline</h2>\n    <ul class=\"bullet-list\" style=\"font-size: var(--body-size); max-width: 72ch;\">\n      <li class=\"reveal r2\"><strong>Learnable bias bᵢ per expert</strong>, added to the affinity for top-K selection only &mdash; routing picks the top-8 of <code>s + bᵢ</code>, but the gating weight multiplying an expert's output still comes from the original "
+  NEW: "    <p class=\"eyebrow reveal\">The DeepSeek-V3 fix &middot; 2/3</p>\n    <h2 class=\"reveal r2\">Balance via a controller, not a loss &mdash; the headline</h2>\n    <div class=\"two-col fig-wide\">\n      <div class=\"col-text\">\n        <ul class=\"bullet-list\" style=\"font-size: var(--body-size);\">\n          <li class=\"reveal r2\"><strong>Learnable bias bᵢ per expert</strong>, added to the affinity for top-K selection only &mdash; routing picks the top-8 of <code>s + bᵢ</code>, but the gating weight multiplying an expert's output still comes from the original "
+
+## Deck change recorded 2026-07-24T04:23:17.285Z (decks/2024-12_deepseekai_deepseekai_deepseek_v3/presentation.html)
+- OLD: "    <div class=\"card-grid\">\n      <div class=\"card reveal r2\">\n        <h3>Node-limited routing</h3>\n        <p>Each token's 8 experts are confined to &le;4 nodes, capping cross-node all-to-all traffic and letting compute/communication overlap.</p>\n      </div>\n      <div class=\"card reveal r2\">\n        <h3>Expert-to-device allocation</h3>\n        <p>Balances per-GPU compute and memory load at placement time.</p>\n      </div>\n      <div class=\"card reveal r3\">\n        <h3>Redundant experts at de"
+  NEW: "    <div class=\"card-grid\">\n      <div class=\"card reveal r2\">\n        <h3>Node-limited routing</h3>\n        <p>Each token's 8 experts are confined to &le;4 nodes, capping cross-node all-to-all traffic and letting compute/communication overlap.</p>\n      </div>\n      <div class=\"card reveal r3\">\n        <h3>No token dropping</h3>\n        <p>In training or inference &mdash; the balance is real, so nothing overflows a capacity limit.</p>\n      </div>\n    </div>"
+
+## Deck change recorded 2026-07-24T04:23:26.316Z (decks/2024-12_deepseekai_deepseekai_deepseek_v3/presentation.html)
+- OLD: "    <ul class=\"bullet-list\" style=\"font-size: var(--body-size); max-width: 72ch;\">\n      <li class=\"reveal r4\">Ablation on two 16B MoE models (~1.33T tokens), comparable balance in both &mdash; removing the interference gradient recovers model quality <em>and</em> expert specialization that auxiliary losses suppress.</li>\n      <li class=\"reveal r4\" style=\"margin-top: var(--element-gap);\">Balance is enforced batch-wise, not per-sequence &mdash; a single-domain sequence isn't forced to spread uniformly, so domain-relevant experts can dominate → clearer, less-redundant specialization</li>"
+  NEW: "    <div class=\"fig-stack fig-stack--compact\">\n      <div class=\"fig-text\">\n        <ul class=\"bullet-list\" style=\"font-size: var(--body-size);\">\n          <li class=\"reveal r4\">Ablation on two 16B MoE models (~1.33T tokens), comparable balance in both &mdash; removing the interference gradient recovers model quality <em>and</em> expert specialization that auxiliary losses suppress.</li>\n          <li class=\"reveal r4\" style=\"margin-top: var(--element-gap);\">Balance is enforced batch-wise, not per-p"
+
 ## Run 2026-07-23 — scope: TL;DR section, training-cost bullets under "That efficiency comes from..." sibling bullets
-Target: `summaries/2024-12_deepseekai_deepseek-v3.md` · Source: `papers/2024-12_deepseekai_deepseek-v3.pdf`
+Target: `summaries/2024-12_deepseekai_deepseekai_deepseek-v3.md` · Source: `papers/2024-12_deepseekai_deepseekai_deepseek_v3.pdf`
 
 | # | Claim | Verdict | Evidence |
 |---|---|---|---|
@@ -9,7 +68,7 @@ Target: `summaries/2024-12_deepseekai_deepseek-v3.md` · Source: `papers/2024-12
 **Summary:** 2 claims checked — 1 accepted-cited, 1 confirmed, 0 uncertain, 0 incorrect.
 
 ## Run 2026-07-23 — scope: full document (post-tagging pass, ~137 `[src:]` locators)
-Target: `summaries/2024-12_deepseekai_deepseek-v3.md` · Source: `papers/2024-12_deepseekai_deepseek-v3.pdf` (+ web search for external/prior-work claims)
+Target: `summaries/2024-12_deepseekai_deepseekai_deepseek-v3.md` · Source: `papers/2024-12_deepseekai_deepseekai_deepseekai_deepseekai_v3.pdf` (+ web search for external/prior-work claims)
 
 Excluded per scope: `## How to read this summary`, `## How the five fit together`, `## Personal Takeaways`, all five `### Why a DS/DE should care` subsections, and pure vague framing bullets with no checkable content. Tightly-coupled sub-bullets sharing one `[src:]` tag with their parent are recorded as a single row.
 
@@ -70,7 +129,7 @@ Excluded per scope: `## How to read this summary`, `## How the five fit together
 | 41 | No token dropping in training or inference | ACCEPTED-CITED | [src: §2.1.2] |
 | 42 | 37B/671B ≈ 5.5% active params | ACCEPTED-CITED | [src: Abstract] |
 | 43 | Ablation: "two 16B MoE models, ~1.33T tokens" with BBH 39.3/37.3, GSM8K 29.6/27.1, MMLU 51.8/51.0, Pile-BPB 0.724/0.727 | CONFIRMED | Re-verified directly against Table 5 (p.27): the "Small MoE" columns (15.7B total / 2.4B activated params) are explicitly labeled "# Training Tokens: 1.33T," and the row values match exactly — Pile-test (BPB) 0.727/0.724, BBH 37.3/39.3, MMLU 51.0/51.8, GSM8K 27.1/29.6 (aux-loss-based vs aux-loss-free). This corrects the prior run's finding (which had flagged "~578B tokens" as wrong — 578B is the token count for the separate Large MoE column, not this one). |
-| 44 | Lineage evidence: DeepSeekMoE-16B outperformed LLaMA2-7B at ~39.6% of its compute | CONFIRMED | Web search of the DeepSeekMoE paper (arXiv:2401.06066) confirms verbatim: "With only 39.6% of computations, DeepSeekMoE 16B outperforms LLaMA2 7B on the majority of benchmarks." Corrected wording ("outperformed... ~39.6%") now matches the source exactly, superseding the prior run's "matched... ~40%" phrasing which had understated the source's "outperforms." |
+| 44 | Lineage evidence: DeepSeekMoE-16B outperformed LLaMA2-7B at ~39.6% of its compute | CONFIRMED | Web search of the DeepSeekMoE paper (arXiv:2401.06066) confirms verbatim: "With only 39.6% of computations, DeepSeekMoE 16B outperforms LLaMA2 7B on the majority of benchmarks." Corrected wording ("outperformed... ~39.6%") now matches the source exactly, superseding the prior run's "matched... ~40%" understatement. |
 | 45 | Removing interference gradient recovers model quality and expert specialization | ACCEPTED-CITED | [src: §4.5.2, §4.5.3] |
 | 46 | Balance enforced batch-wise not per-sequence, enabling clearer specialization | ACCEPTED-CITED | [src: §4.5.3] |
 | 47 | Node-limited routing keeps system from being communication-bound | ACCEPTED-CITED | [src: §2.1.2] |
@@ -154,53 +213,17 @@ Excluded per scope: `## How to read this summary`, `## How the five fit together
 
 **Summary:** 99 claims checked — 62 accepted-cited, 28 confirmed, 9 uncertain, 0 incorrect.
 
-## Run 2026-07-23 — scope: changed claims from follow-up edit, "Fine-Grained MoE & Expert Load Balancing" section (closing out prior run's findings)
-Target: `summaries/2024-12_deepseekai_deepseek-v3.md` · Source: `papers/2024-12_deepseekai_deepseek-v3.pdf` (+ web search for external/prior-work claim)
+## Run 2026-07-25 — scope: Section 5 (DualPipe) edits only
+Target: `summaries/2024-12_deepseekai_deepseek-v3.md` · Source: `extracted/2024-12_deepseekai_deepseek-v3/latex.md` (§3.2.1, L415–458) and `text.md` (L859–899)
+
+This run covers the 5 change records from the user's Section 5 (DualPipe) editing session. Per the plan: already-referenced claims (with `[src: ...]` tags) are logged as ACCEPTED-CITED without re-check; unreferenced synthesis/intuition claims were actively verified against the extracted source. The `[ref-only]` trims are editorial and not enumerated as claims.
 
 | # | Claim | Verdict | Evidence |
 |---|---|---|---|
-| 1 | Ablation (two 16B MoE models, ~1.33T tokens): auxiliary-loss-free beats auxiliary-loss-based on BBH 39.3/37.3, GSM8K 29.6/27.1, MMLU 51.8/51.0, Pile-BPB 0.724/0.727 | ACCEPTED-CITED | [src: Table 5] — re-confirmed directly: Table 5 (p.27) "Small MoE" columns (15.7B total / 2.4B activated) are explicitly labeled "# Training Tokens: 1.33T," and all four benchmark pairs match exactly (Pile-test BPB 0.727/0.724, BBH 37.3/39.3, MMLU 51.0/51.8, GSM8K 27.1/29.6). Corrects the prior run's flagged "~578B tokens" error — 578B belongs to the separate Large MoE column with entirely different benchmark values. |
-| 2 | 61 layers: first 3 dense, remaining 58 are MoE layers | ACCEPTED-CITED | [src: §4.2] — already confirmed in the immediately-preceding full-document run (matches §4.2, p.22: "We set the number of Transformer layers to 61... We substitute all FFNs except for the first three layers with MoE layers"). |
-| 3 | "Likely rationale (not stated by the paper): early-layer routing tends to be unstable" | UNCERTAIN | Writer's own inference, explicitly labeled as such; not asserted in §4.2 or elsewhere per full-text check. §4.2 (p.22) states only the fact with no rationale given anywhere in the report. |
-| 4 | Switched from softmax (V2) to sigmoid | ACCEPTED-CITED | [src: §2.1.2] — matches p.9: "DeepSeek-V3 uses the sigmoid function...Slightly different from DeepSeek-V2." |
-| 5 | "Likely rationale (not stated by the paper): softmax over 256 experts makes individual gates vanishingly small and gradient-starved" | UNCERTAIN | Writer's own inference, explicitly labeled as such; not asserted anywhere in the paper. No rationale for the softmax→sigmoid switch is given in the source. |
-| 6 | Lineage evidence: DeepSeekMoE-16B outperformed LLaMA2-7B at ~39.6% of its compute | CONFIRMED | Web search of the DeepSeekMoE paper (arXiv:2401.06066) confirms verbatim: "With only 39.6% of computations, DeepSeekMoE 16B outperforms LLaMA2 7B on the majority of benchmarks." Corrected wording now matches the source exactly (supersedes prior run's "matched... ~40%" understatement). |
+| 1 | Bidirectional schedule intuition: "two streams enter from both ends and meet in the middle, each only traversing half the pipeline before overlapping the other stream's work. This halves the effective fill/drain depth from `(PP−1)` to `(PP/2−1)`." | CONFIRMED | Source §3.2.1 (latex.md L434) states: "It employs a bidirectional pipeline scheduling, which feeds micro-batches from both ends of the pipeline simultaneously." Table 2 shows the DualPipe bubble formula `((PP/2) − 1)(F&B + B − 3W)`. The "meet in the middle / halving" intuition is a reasonable synthesis of these two facts, not contradicted by the paper. |
+| 2 | Bubble formula explanation: "The DualPipe bubble formula reflects this: `((PP/2) − 1)(F&B + B − 3W)` [src: Table 2] — where `F&B` denotes the time of two mutually overlapped forward and backward chunks. The `PP/2−1` factor (vs `PP−1` in 1F1B) is the key — roughly half the bubble-inducing stage count." | ACCEPTED-CITED | Already tagged `[src: Table 2]`; logged without re-check per plan. |
+| 3 | SM-ratio mechanism: "By dedicating a small fixed set (20 SMs, §3.2.2) to run the all-to-all and PP comm kernels concurrently with the rest doing attention/MLP compute, comm runs in parallel with (not serially before/after) computation. The SM partition is tuned so the comm kernel finishes within the compute window → comm is fully hidden, costing zero extra step time." | CONFIRMED | Source §3.2.1 (latex.md L431-432) states: "manually adjust the ratio of GPU SMs dedicated to communication versus computation." §3.2.2 (text.md L902) confirms: "only 20 SMs are sufficient to fully utilize the bandwidths... regardless of scale." The explanation is synthesis consistent with both cited sections. |
+| 4 | B/W split intuition: "Why split backward into B and W (ZeroBubble): a normal backward computes input-gradients and weight-gradients together as one chunk. But the input-gradient part (B) is what propagates downstream to earlier stages (on the critical path), while the weight-gradient part (W) only updates local parameters (no downstream dependency, can be deferred). Splitting moves W off the critical path, shrinking the bubble — visible in Table 2 as the `−2W` (ZB1P) and `−3W` (DualPipe) terms." | CONFIRMED | Source §3.2.1 (latex.md L429) states: "backward for input and backward for weights, like in ZeroBubble." Table 2 shows both bubble formulas with the `−2W` and `−3W` terms. The critical-path reasoning is technically accurate backward-pass knowledge and is consistent with the ZeroBubble approach; not contradicted by the paper. |
+| 5 | `[ref-only]` trims (GPipe bullet, "Bubble grows with pipeline depth PP", bandwidth-matching arithmetic) | — | Editorial markers per plan, not enumerated as claims. |
 
-**Summary:** 6 claims checked — 3 accepted-cited, 1 confirmed, 2 uncertain, 0 incorrect.
-
-## Run 2026-07-23 — scope: deck `decks/2024-12_deepseekai_deepseek-v3/presentation.html`, slides 8–14 (Section 2 of 5, "Fine-Grained MoE & Expert Load Balancing")
-Target: `decks/2024-12_deepseekai_deepseek-v3/presentation.html` · Source: `summaries/2024-12_deepseekai_deepseek-v3.md` (lines 109–190)
-
-No `[src:]` tagging convention applies to deck HTML, so every claim below was actively verified against the summary (the deck's job here is faithful transcription, not re-derivation from the paper).
-
-| # | Claim (slide) | Verdict | Evidence |
-|---|---|---|---|
-| 1 | Slide 8 subtitle: 256 routed experts (+1 shared), 8 activated/token, balanced via learnable per-expert bias, not an aux loss | CONFIRMED | Matches summary line 111 TL;DR near-verbatim. |
-| 2 | Slide 8 footer: "DeepSeek-AI, 2024 · arXiv:2412.19437" | CONFIRMED | Matches summary header/citation metadata (already verified in full-document run above). |
-| 3 | Slide 9 card "Coarse experts under-specialize": classic MoE top-1/2 routing, wide-mix experts, duplicated general knowledge, few combinations per token | CONFIRMED | Matches summary lines 115–121. |
-| 4 | Slide 9 card "Routing collapse": jointly-learned router, rich-get-richer dynamic, most experts starve, wasted params | CONFIRMED | Matches summary lines 122–125. |
-| 5 | Slide 9 card "The aux-loss remedy has a real cost": interference gradient, enough weight to balance measurably degrades quality | CONFIRMED | Matches summary lines 126–129. |
-| 6 | Slide 9 card "Device & communication cost": distributed all-to-all, cross-node traffic, GPU stragglers, token dropping under capacity limits | CONFIRMED | Matches summary lines 130–134. |
-| 7 | Slide 10 stats: 671B total / 37B activated per token; 256+1 experts per MoE layer; 8 activated per token | CONFIRMED | Matches summary lines 138, 141. |
-| 8 | Slide 10 bullet: fine-grained experts + shared-expert isolation, 8-of-256 combinations, shared expert absorbs common knowledge | CONFIRMED | Matches summary lines 142–144. |
-| 9 | Slide 10 bullet: sigmoid affinity router `s = Sigmoid(uᵀ·eᵢ)`, switched from softmax (V2) "since softmax over 256 experts leaves individual gates vanishingly small and gradient-starved" | INCORRECT | Transcription drift: the summary (lines 147–148) explicitly labels this rationale as the writer's own speculation — "Likely rationale (**not stated by the paper**): softmax over 256 experts makes individual gates vanishingly small and gradient-starved" — a hedge the prior audit run above independently flagged UNCERTAIN for the same reason. The deck drops the hedge and states it with a causal "since," presenting it as an established fact from the paper. The router formula and softmax→sigmoid switch themselves are correctly transcribed; only the epistemic status of the rationale is misrepresented. |
-| 10 | Slide 11 bullet: learnable bias bᵢ, added for top-K selection only, routing picks top-8 of s+bᵢ, gating weight still from original s | CONFIRMED | Matches summary lines 150–152. |
-| 11 | Slide 11 bullet: feedback controller adjusts bias per step (±γ), γ=0.001 for first 14.3T tokens then γ=0 | CONFIRMED | Matches summary lines 153–157. |
-| 12 | Slide 11 bullet: steers which experts are chosen without injecting a distortion gradient into the LM loss | CONFIRMED | Matches summary line 156. |
-| 13 | Slide 11 bullet: tiny complementary sequence-wise loss (α=0.0001), rules out pathological within-sequence imbalance, too small to perturb LM objective | CONFIRMED | Matches summary lines 158–160. |
-| 14 | Slide 12 card "Node-limited routing": each token's 8 experts confined to ≤4 nodes, caps cross-node all-to-all, lets compute/comm overlap | CONFIRMED | Matches summary line 162. |
-| 15 | Slide 12 card "Expert-to-device allocation": balances per-GPU compute/memory at placement time | CONFIRMED | Matches summary line 163. |
-| 16 | Slide 12 card "Redundant experts at deployment": dynamic redundancy duplicates hot experts, +32 redundant experts in prefill EP32 | CONFIRMED | Matches summary line 164. |
-| 17 | Slide 12 card "No token dropping": in training or inference, nothing overflows a capacity limit | CONFIRMED | Matches summary line 165. |
-| 18 | Slide 13 stat: 5.5% of 671B active per token (37B) | CONFIRMED | Matches summary line 170. |
-| 19 | Slide 13 stat: BBH +2.0 (39.3 vs 37.3) | CONFIRMED | Matches summary line 172; arithmetic (39.3−37.3=2.0) checks out. |
-| 20 | Slide 13 stat: GSM8K +2.5 (29.6 vs 27.1) | CONFIRMED | Matches summary line 173; arithmetic (29.6−27.1=2.5) checks out. |
-| 21 | Slide 13 stat: MMLU +0.8 (51.8 vs 51.0) | CONFIRMED | Matches summary line 174; arithmetic (51.8−51.0=0.8) checks out. |
-| 22 | Slide 13 bullet: ablation on two 16B MoE models (~1.33T tokens), comparable balance, removing interference gradient recovers quality and specialization | CONFIRMED | Matches summary lines 171, 178. |
-| 23 | Slide 13 bullet: balance enforced batch-wise not per-sequence, domain-relevant experts can dominate, clearer/less-redundant specialization | CONFIRMED | Matches summary line 179. |
-| 24 | Slide 14 bullets: two distinct load-balancing problems (statistical balance via controller-tuned bias; physical balance via node-limited routing/placement/redundant experts) | CONFIRMED | Matches summary lines 184–186. |
-| 25 | Slide 14 bullet: deeper lesson — move a constraint fighting the main objective out of the loss into a non-distorting control mechanism | CONFIRMED | Matches summary line 187. |
-| 26 | Slide 14 footer: "DeepSeek-V3 Technical Report · arXiv:2412.19437 · Section 2 of 5" | CONFIRMED | Citation matches summary header metadata; "Section 2 of 5" matches the deck's own section numbering (this is the second of five summary sections), consistent with slide 8's identical eyebrow label. |
-
-**Summary:** 26 claims checked — 0 accepted-cited, 25 confirmed, 0 uncertain, 1 incorrect.
-</content>
+**Summary:** 4 synthesis claims checked — 0 accepted-cited, 4 confirmed, 0 uncertain, 0 incorrect. All three unreferenced intuition claims (bidirectional halving, SM-ratio mechanism, B/W split critical-path) are reasonable interpretations consistent with the source. No incorrect findings.

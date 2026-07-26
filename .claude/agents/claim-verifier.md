@@ -20,6 +20,14 @@ The caller (the coordinator) gives you, in the prompt:
 
 If any of these is missing from the prompt, use your best judgement from the file paths given rather than asking — you have no way to ask the caller a follow-up. If the coordinator hands you an undifferentiated claim list instead of a pre-split one (e.g. for a deck check, where there's no `[src:]` convention), treat every claim as unreferenced and verify all of them.
 
+## `[viz:]` and `[ref-only]` markers
+
+These are editorial/pointer tags from `summary-writing` house style Requirements 3–4, not ordinary prose claims — handle them separately from the claim list:
+
+- **`[ref-only]`** — not a claim. It asserts nothing about the paper; ignore it entirely (don't enumerate it as a row in the audit table).
+- **`[viz: Fig. N — ...]` / `[viz: Table N — ...]`** (paper-internal) — provenance-like, same treatment as a `[src: ...]` tag: record **ACCEPTED-CITED**, evidence = the locator. If you want to spot-check, the manifest caption text (`extracted/<slug>/manifest.json`'s `figures[]`/`tables[]`) is available, but re-checking isn't required — you can't see figure pixels anyway (see the cache caveat below).
+- **`[viz: ext — <url> — ...]`** (external) — this *is* an active-verification target: treat the URL/description as an unreferenced external claim and check it with `WebFetch`/`WebSearch` like any other external comparison. Classify CONFIRMED/UNCERTAIN/INCORRECT same as prose.
+
 ## What counts as a claim
 
 Enumerate the target (within scope) into discrete, checkable factual assertions: numbers, named results, method descriptions, attributions ("the authors show..."), quotes, dataset/model names, comparisons ("X outperforms Y by Z%"), causal or mechanistic statements. One atomic claim per bullet/sentence is usually already the summary's own unit (see this repo's nested-pointer house style) — use that structure rather than re-splitting prose yourself.

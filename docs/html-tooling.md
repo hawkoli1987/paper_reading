@@ -30,9 +30,11 @@ Every deck generation asks a mandatory question before building: stick with the 
 
 Figures are pre-extracted once per paper by `scripts/extract-paper.py --figures` (see [`../CLAUDE.md`](../CLAUDE.md)'s "Pipeline" section) into `extracted/<slug>/figures/figure-<N>.png` — cropped from the compiled PDF via `page.get_text("dict")` caption-bbox location + `page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=rect)`, `zoom` ~3.5x. This replaces the old per-deck ad-hoc crop: the PDF is only opened once regardless of how many decks a paper spawns.
 
-To use a figure in a deck: copy the PNG you need from `extracted/<slug>/figures/` into the deck's own `assets/` folder and reference it by relative path (`assets/figure-name.png`) in the generated HTML — keep the per-deck `assets/` copy (don't reference `extracted/` directly) so each `presentation.html` stays self-contained and portable on its own.
+**Which figure to pull is decided at authoring time, not ad hoc at deck time.** The summary itself records the pairing via `[viz: Fig. N — <desc>]` / `[viz: Table N — <desc>]` tags on critical-concept bullets (`summary-writing` Requirement 4, added by `summary-tagger`) — deck generation reads those tags rather than re-deciding which figure fits which concept each time. To use a figure in a deck: copy the PNG you need from `extracted/<slug>/figures/` into the deck's own `assets/` folder and reference it by relative path (`assets/figure-name.png`) in the generated HTML — keep the per-deck `assets/` copy (don't reference `extracted/` directly) so each `presentation.html` stays self-contained and portable on its own.
 
 If a figure's crop looks wrong (check `extracted/<slug>/manifest.json`'s `warnings` — a fallback-band crop is flagged there when the script couldn't locate an embedded image block above the caption), re-crop it by hand using the same recipe, or re-run the extractor with `--force`.
+
+**Decorative vs. explanatory imagery.** The vendored `frontend-slides` skill's own guidance ("use abstract shapes, gradients, grids, noise, and geometry rather than illustrations") is about a deck's visual identity/background treatment — it isn't a rule against using the paper's own figures. A `[viz:]`-tagged figure illustrating a critical concept should still be rendered on its slide, within the skill's one-image-per-slide density cap; the abstract-shapes guidance just means don't invent decorative illustrations that aren't grounded in the paper.
 
 ## QA
 

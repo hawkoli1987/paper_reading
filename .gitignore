@@ -6,3 +6,7 @@ scripts/node_modules/
 extracted/*/figures/
 __pycache__/
 *.pyc
+
+# transient scheduler runtime artifacts
+.claude/scheduled_tasks.lock
+.claude/scheduled_tasks.json

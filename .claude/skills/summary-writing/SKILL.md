@@ -32,3 +32,28 @@ Every claim lifted **directly** from the paper — a number, a named result, a q
 - Use a consistent, unambiguous locator — section number, page + table/figure number, or equation number. Don't tag with something unverifiable like "the paper" alone.
 
 **Why:** this tag is the provenance signal the claim-verification pipeline runs on (see `.claude/agents/claim-verifier.md` and `CLAUDE.md`'s mandatory-verification step). A tagged claim is trusted on its citation and logged as accepted without re-checking; an untagged claim is exactly what gets forwarded for active verification against the source PDF or web search. Tagging accurately is what keeps verification effort pointed at the claims that actually need it.
+
+## Requirement 3: `[ref-only]` deck-scope marker
+
+Some detail is worth keeping in the summary for future reference but shouldn't force its way into every deck — a trivial specific, a tangent, a number only a deep-dive audience needs. Mark it with a trailing inline tag: **`[ref-only]`**, placed after any `[src: ...]`/`[viz: ...]` tag already on the same bullet.
+
+- **Default is deck-eligible.** Only tag the exceptions — don't mark the majority of bullets that are perfectly fine to surface on a slide.
+- **A marker on a parent bullet covers its entire subtree.** Don't also tag every child underneath it.
+- Excluded from decks *by default*, not permanently forbidden: a specific deck generation can still explicitly pull a `[ref-only]` bullet in if that generation's audience wants the depth — same opt-in spirit as the `## Appendix` convention (see `CLAUDE.md`).
+- Orthogonal to `[src:]`/`[viz:]` — a bullet can be cited, illustrated, *and* ref-only at once; the tags stack, e.g. `... [src: §3.3] [ref-only]`.
+- This tag makes no factual assertion — it's editorial, not a claim — so it is never a verification target for `claim-verifier`.
+
+**Why:** without a persistent marker, every deck generation has to silently re-decide "is this bullet worth showing" from scratch, and that judgment is never recorded anywhere for the next person (or the next generation) to reuse.
+
+## Requirement 4: `[viz:]` visual-aid marker
+
+On each critical-concept bullet — Key Contributions, the core mechanism(s) in Method, headline results — name the single clearest visual that would help someone understand the concept, with a trailing inline tag: **`[viz: <locator> — <short desc>]`**.
+
+- **Paper-internal** (preferred): `[viz: Fig. 6 — mixed-precision FP8 GEMM framework]` / `[viz: Table 3 — ablation results]`. Only use a figure/table that's actually backed by a real crop in `extracted/<slug>/figures/figure-N.png` (or a real table in the paper) — don't point at a figure that doesn't exist or wasn't cropped.
+- **External fallback**: `[viz: ext — <url> — <short desc>]`, used only when the paper itself has no figure or table that illustrates the concept well. Requires a real, checkable source URL — never a vague "found online."
+- **Paper-first, external fallback.** Try to find a fitting figure in the paper before reaching for an external one.
+- This is a *pointer*, not an embed — don't paste an image into the summary markdown. It's the candidate deck generation reads to decide what to copy into a deck's `assets/` folder and render on the corresponding slide.
+- Distinct from `[src:]`: `[src:]` says where a claim is grounded; `[viz:]` says what best *illustrates* it. A bullet can carry both, pointing at the same figure or different ones — they don't have to match.
+- Not every bullet needs one — only critical concepts. Supporting/incidental bullets don't need a `[viz:]` tag.
+
+**Why:** figures are already extracted and captioned once per paper (`extracted/<slug>/figures/` + `manifest.json`), but until now nothing recorded *which* figure best explains *which* concept — that judgment had to be re-made by hand at every deck generation, and decks defaulted to no illustration at all. A `[viz:]` tag captures the "best visual for this idea" decision once, at authoring time, for every future deck to reuse.

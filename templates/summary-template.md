@@ -1,3 +1,12 @@
+<!--
+Marker legend (see .claude/skills/summary-writing/SKILL.md for full rules):
+  [src: <locator>]  — claim is lifted directly from the paper (e.g. [src: §4.2])
+  [viz: <locator> — <desc>] — best visual for this concept: paper fig/table
+                              (e.g. [viz: Fig. 6 — ...]) or external (e.g. [viz: ext — <url> — ...])
+  [ref-only]        — kept for reference; excluded from decks by default
+All three are authoring-layer only — never rendered onto a slide.
+-->
+
 # {Paper Title}
 
 - **Authors:** {Author 1, Author 2, ...}
