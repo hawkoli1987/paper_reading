@@ -34,6 +34,12 @@ Never scroll inside a slide.
 
 ## Mandatory Base CSS
 
+> **This repo uses `templates/deck-base.css` instead of the block below.** It's the
+> same contract with fixes for defects this block still has (scroll-snap on `html`
+> instead of the real scroll container; a heading font-size cap reached at a wider
+> viewport than the content container's own max-width cap) — see
+> `docs/html-tooling.md` and `.claude/skills/deck-writing/SKILL.md`.
+
 Copy this block into every generated presentation and then theme on top of it.
 
 ```css

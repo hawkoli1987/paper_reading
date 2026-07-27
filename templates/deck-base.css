@@ -1,0 +1,199 @@
+/* ===========================================
+   VIEWPORT FITTING: REPO-OWNED MANDATORY BASE
+   ===========================================
+   Copy this ENTIRE block into every generated presentation.html, in place of
+   the vendored `frontend-slides` skill's own "Mandatory Base CSS" block
+   (.claude/skills/frontend-slides/{STYLE_PRESETS.md,viewport-base.css}).
+
+   This file corrects five defects the vendored block still reproduces —
+   see .claude/skills/deck-writing/SKILL.md (R1-R6) for the full rationale and
+   decks/2024-12_deepseekai_deepseek-v3/presentation.html for the deck that
+   surfaced and fixed them originally. Theme on top of this; don't edit the
+   rules themselves per-deck — if a rule is wrong for a specific slide, use
+   the documented escape hatch (e.g. `.slide-content--centered`) rather than
+   overriding the base.
+   =========================================== */
+
+html {
+    height: 100%;
+}
+
+/* body, not html, is the actual scroll container here (html's non-visible
+   overflow makes the viewport propagate to html, leaving body to scroll) —
+   so the snap rule has to live on body or it never engages, and the deck
+   rests between slides instead of snapping. */
+body {
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: auto;
+    overscroll-behavior-y: contain;
+}
+
+.slide {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* dynamic viewport height for mobile browsers */
+    overflow: hidden; /* CRITICAL: prevent any overflow */
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* One measure, left-aligned, for every slide. NOT margin-inline:auto — a flex
+   child with an auto cross-axis margin skips align-self:stretch and
+   shrink-wraps to its own content instead, so the left edge (and therefore
+   the apparent alignment of the heading above it) drifts slide to slide. */
+.slide-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-self: stretch;
+    max-width: min(100%, 1440px);
+    margin-inline: 0;
+    max-height: 100%;
+    overflow: hidden; /* double-protection against overflow */
+    min-height: 0; /* let this flex child shrink below its content's intrinsic
+                       size instead of pushing past the slide box (R6) */
+    padding: var(--slide-padding);
+}
+
+/* Opt-out for a genuinely centred slide (title cards, section dividers).
+   Use this class explicitly rather than an ad hoc margin-inline:auto — it's
+   excluded from qa-screenshot.js's left-edge consistency check by name. */
+.slide-content--centered {
+    margin-inline: auto;
+    align-items: center;
+    text-align: center;
+}
+
+/* ALL typography uses clamp() for responsive scaling. One size per level —
+   never override font-size on an individual heading; shorten the text
+   instead (see deck-writing SKILL.md R3-R4). */
+:root {
+    /* Max values are capped at coefficient * 0.9rem so the font stops
+       growing at the same 1440px viewport where .slide-content's own
+       max-width:1440px cap engages (vw_coefficient * 1440px / 100 = the px
+       cap; /16 for rem = coefficient * 0.9). Left uncapped at the vendored
+       skill's larger max (e.g. 4rem for --title-size), the font keeps
+       growing past 1440px viewport while the container it renders into has
+       already stopped — headings that fit fine at 1280px wrap again at
+       1920px because font outgrows the fixed-width box. h3/body/small/
+       stat-num already reach their max below 1440px viewport and don't need
+       this adjustment. */
+    --title-size: clamp(1.5rem, 4vw, 3.6rem);    /* was 5vw upstream (wrapped
+                                                    a 40-char h1 at 1280px);
+                                                    was 4rem (wrapped again at
+                                                    1920px, see comment above) */
+    --h2-size: clamp(1.15rem, 2.9vw, 2.6rem);    /* was clamp(1.25rem, 3.5vw, 2.5rem), then 3rem */
+    --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+
+    --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+    --small-size: clamp(0.65rem, 1vw, 0.875rem);
+
+    --slide-padding: clamp(1rem, 4vw, 4rem);
+    --content-gap: clamp(0.5rem, 2vw, 2rem);
+    --element-gap: clamp(0.25rem, 1vw, 1rem);
+}
+
+.card, .container, .content-box {
+    max-width: min(90vw, 1000px);
+    max-height: min(80vh, 700px);
+}
+
+.feature-list, .bullet-list {
+    gap: clamp(0.4rem, 1vh, 1rem);
+}
+
+.feature-list li, .bullet-list li {
+    font-size: var(--body-size);
+    line-height: 1.4;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: clamp(0.5rem, 1.5vw, 1rem);
+}
+
+img, .image-container {
+    max-width: 100%;
+    max-height: min(50vh, 400px);
+    object-fit: contain;
+}
+
+/* Display numbers (stat callouts, big metrics) must never wrap — a broken
+   number reads as a layout bug, not a line break. */
+.stat { flex: 1 1 auto; min-width: auto; }
+.stat-num { white-space: nowrap; }
+
+/* ===========================================
+   RESPONSIVE BREAKPOINTS
+   Aggressive scaling for smaller viewports. Coefficients below are rescaled
+   from the vendored skill's values to stay proportional to the corrected
+   --title-size/--h2-size base above — copying the vendored numbers verbatim
+   would reintroduce a larger vw ratio than the fix at desktop widths.
+   =========================================== */
+
+/* Short viewports (< 700px height) */
+@media (max-height: 700px) {
+    :root {
+        --slide-padding: clamp(0.75rem, 3vw, 2rem);
+        --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+        --title-size: clamp(1.25rem, 3.6vw, 2.5rem);
+        --h2-size: clamp(1rem, 2.5vw, 1.75rem);
+    }
+}
+
+/* Very short viewports (< 600px height) */
+@media (max-height: 600px) {
+    :root {
+        --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+        --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+        --title-size: clamp(1.1rem, 3.2vw, 2rem);
+        --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+    }
+
+    .nav-dots, .keyboard-hint, .decorative {
+        display: none;
+    }
+}
+
+/* Extremely short (landscape phones, < 500px height) */
+@media (max-height: 500px) {
+    :root {
+        --slide-padding: clamp(0.4rem, 2vw, 1rem);
+        --title-size: clamp(1rem, 2.8vw, 1.5rem);
+        --h2-size: clamp(0.9rem, 2vw, 1.25rem);
+        --body-size: clamp(0.65rem, 1vw, 0.85rem);
+    }
+}
+
+/* Narrow viewports (< 600px width) */
+@media (max-width: 600px) {
+    :root {
+        --title-size: clamp(1.25rem, 7vw, 2.5rem);
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===========================================
+   REDUCED MOTION
+   =========================================== */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.2s !important;
+    }
+
+    body {
+        scroll-behavior: auto;
+    }
+}

@@ -4,6 +4,8 @@ scripts/node_modules/
 .claude/.audit-pending/*
 !.claude/.audit-pending/.gitkeep
 extracted/*/figures/
+decks/*/*.pptx
+decks/*/qa-screenshots/
 __pycache__/
 *.pyc
 

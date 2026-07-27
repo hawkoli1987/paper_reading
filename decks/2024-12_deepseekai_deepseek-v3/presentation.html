@@ -12,14 +12,20 @@
    VIEWPORT FITTING: MANDATORY BASE STYLES
    =========================================== */
 
-html, body {
+html {
     height: 100%;
-    overflow-x: hidden;
 }
 
-html {
+/* body, not html, is the actual scroll container here (html's non-visible
+   overflow makes the viewport propagate to html, leaving body to scroll) —
+   so the snap rule has to live on body or it never engages. */
+body {
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
     scroll-snap-type: y mandatory;
-    scroll-behavior: smooth;
+    scroll-behavior: auto;
+    overscroll-behavior-y: contain;
 }
 
 .slide {
@@ -28,6 +34,7 @@ html {
     height: 100dvh;
     overflow: hidden;
     scroll-snap-align: start;
+    scroll-snap-stop: always;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -37,15 +44,31 @@ html {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
+    align-self: stretch;
+    max-width: min(100%, 1440px);
+    margin-inline: 0;
     max-height: 100%;
     overflow: hidden;
+    min-height: 0;
     padding: var(--slide-padding);
 }
 
+/* Opt-out for a genuinely centred slide (title cards, section dividers).
+   Unused in this deck today, kept in sync with templates/deck-base.css. */
+.slide-content--centered {
+    margin-inline: auto;
+    align-items: center;
+    text-align: center;
+}
+
 :root {
-    --title-size: clamp(1.5rem, 5vw, 4rem);
-    --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+    /* max capped at coefficient*0.9rem so font growth stops at the same
+       1440px viewport where .slide-content's max-width:1440px cap engages —
+       otherwise font keeps growing past 1440px while its container doesn't,
+       and headings that fit at 1280px wrap again at 1920px. */
+    --title-size: clamp(1.5rem, 4vw, 3.6rem);
+    --h2-size: clamp(1.15rem, 2.9vw, 2.6rem);
     --h3-size: clamp(1rem, 2.5vw, 1.75rem);
     --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
     --small-size: clamp(0.65rem, 1vw, 0.875rem);
@@ -55,27 +78,47 @@ html {
     --element-gap: clamp(0.25rem, 1vw, 1rem);
 }
 
-.card, .container, .content-box {
+.card {
     max-width: min(90vw, 1000px);
     max-height: min(80vh, 700px);
 }
 
-.feature-list, .bullet-list {
+.bullet-list {
     gap: clamp(0.4rem, 1vh, 1rem);
 }
 
-.feature-list li, .bullet-list li {
+.bullet-list li {
     font-size: var(--body-size);
     line-height: 1.4;
 }
 
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
-    gap: clamp(0.5rem, 1.5vw, 1rem);
+.bullet-list--lg li {
+    font-size: clamp(0.9rem, 1.85vw, 1.2rem);
 }
 
-img, .image-container {
+/* denser variant for reference-heavy appendix lists carrying nested sub-bullets */
+.bullet-list--dense li {
+    font-size: var(--small-size);
+    line-height: 1.35;
+}
+
+/* nested sub-bullets: one level down in size/weight, no extra indent stacking */
+.bullet-list--sub {
+    margin-top: clamp(0.3rem, 0.8vh, 0.5rem);
+    gap: clamp(0.2rem, 0.6vh, 0.45rem);
+}
+.bullet-list--sub li {
+    font-size: var(--small-size);
+    padding-left: 1.1em;
+}
+.bullet-list--sub li::before {
+    width: 4px;
+    height: 4px;
+    top: 0.5em;
+    background: var(--muted);
+}
+
+img {
     max-width: 100%;
     max-height: min(50vh, 400px);
     object-fit: contain;
@@ -85,8 +128,8 @@ img, .image-container {
     :root {
         --slide-padding: clamp(0.75rem, 3vw, 2rem);
         --content-gap: clamp(0.4rem, 1.5vw, 1rem);
-        --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
-        --h2-size: clamp(1rem, 3vw, 1.75rem);
+        --title-size: clamp(1.25rem, 3.6vw, 2.5rem);
+        --h2-size: clamp(1rem, 2.5vw, 1.75rem);
     }
 }
 
@@ -94,11 +137,11 @@ img, .image-container {
     :root {
         --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
         --content-gap: clamp(0.3rem, 1vw, 0.75rem);
-        --title-size: clamp(1.1rem, 4vw, 2rem);
+        --title-size: clamp(1.1rem, 3.2vw, 2rem);
         --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
     }
 
-    .nav-dots, .keyboard-hint, .decorative {
+    .nav-dots, .keyboard-hint {
         display: none;
     }
 }
@@ -106,8 +149,8 @@ img, .image-container {
 @media (max-height: 500px) {
     :root {
         --slide-padding: clamp(0.4rem, 2vw, 1rem);
-        --title-size: clamp(1rem, 3.5vw, 1.5rem);
-        --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+        --title-size: clamp(1rem, 2.8vw, 1.5rem);
+        --h2-size: clamp(0.9rem, 2vw, 1.25rem);
         --body-size: clamp(0.65rem, 1vw, 0.85rem);
     }
 }
@@ -146,9 +189,6 @@ img, .image-container {
     --line: #DEDFE1;
     --panel: #F4F4F5;
     --signal: #E8262B;
-    --dark-bg: #0B0B0C;
-    --dark-ink: #F5F5F5;
-    --dark-muted: #9A9DA3;
     --font-head: 'Archivo', sans-serif;
     --font-body: 'Nunito', sans-serif;
 }
@@ -160,7 +200,6 @@ body {
 }
 
 .slide { background: var(--bg); }
-.slide.dark { background: var(--dark-bg); color: var(--dark-ink); }
 
 h1, h2, h3, .eyebrow, .stat-num {
     font-family: var(--font-head);
@@ -175,8 +214,6 @@ h1, h2, h3, .eyebrow, .stat-num {
     color: var(--signal);
     margin-bottom: var(--element-gap);
 }
-
-.dark .eyebrow { color: var(--signal); }
 
 h1 {
     font-size: var(--title-size);
@@ -205,8 +242,6 @@ p.subtitle {
     margin-top: var(--element-gap);
 }
 
-.dark p.subtitle { color: var(--dark-muted); }
-
 /* --- visible-grid backdrop (Swiss Modern signature) --- */
 .grid-backdrop {
     position: absolute;
@@ -220,17 +255,7 @@ p.subtitle {
     z-index: 0;
 }
 
-.dark .grid-backdrop {
-    background-image:
-        linear-gradient(#232326 1px, transparent 1px),
-        linear-gradient(90deg, #232326 1px, transparent 1px);
-    opacity: 0.7;
-}
-
 .slide-content { position: relative; z-index: 1; }
-
-/* MTP section (§4) text slides — wider centered band so the text box fills the slide width */
-.slide-content.wide { max-width: min(92vw, 1180px); margin-inline: auto; }
 
 /* --- byte-grid motif: bit layout of a float format --- */
 .byte-grid { display: flex; flex-direction: column; gap: clamp(0.5rem, 1.2vh, 0.9rem); }
@@ -251,21 +276,16 @@ p.subtitle {
 .bit-sign { background: var(--muted); }
 .bit-exp { background: var(--signal); }
 .bit-man { background: var(--ink); }
-.dark .bit-man { background: var(--dark-ink); }
 .byte-note { font-size: var(--small-size); color: var(--muted); font-weight: 700; }
-.dark .byte-note { color: var(--dark-muted); }
 
 /* --- expert-grid motif: sampled activation pattern for MoE routing --- */
 .expert-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; width: clamp(160px, 18vw, 220px); }
 .expert-cell { aspect-ratio: 1; border-radius: 2px; background: var(--line); }
-.dark .expert-cell { background: #232326; }
 .expert-cell.active { background: var(--signal); }
 .expert-cell.shared { background: var(--ink); }
-.dark .expert-cell.shared { background: var(--dark-ink); }
 
 .legend { display: flex; gap: clamp(0.75rem, 2vw, 1.5rem); flex-wrap: wrap; margin-top: clamp(0.5rem, 1.5vh, 1rem); }
 .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: var(--small-size); font-weight: 700; color: var(--muted); }
-.dark .legend-item { color: var(--dark-muted); }
 .legend-item .bit { width: 10px; height: 10px; }
 
 /* --- content layout helpers --- */
@@ -277,7 +297,6 @@ p.subtitle {
     width: 6px; height: 6px; background: var(--signal); border-radius: 1px;
 }
 .bullet-list strong { color: var(--ink); }
-.dark .bullet-list strong { color: var(--dark-ink); }
 
 .two-col { display: grid; grid-template-columns: 1.05fr 1fr; gap: clamp(1.25rem, 3vw, 3rem); align-items: center; flex: 1; min-height: 0; }
 @media (max-height: 640px) { .two-col { grid-template-columns: 1fr; } }
@@ -288,19 +307,19 @@ p.subtitle {
 
 /* wide-figure column split (slide 4, 1.64:1 figure) — figure column dominant */
 .two-col.fig-wide { grid-template-columns: 0.82fr 1.18fr; }
-.two-col.fig-wide .col-figure img { max-height: min(80vh, 720px); }
+.two-col.fig-wide .col-figure img { max-height: min(60vh, 540px); }
 @media (max-height: 640px) { .two-col.fig-wide { grid-template-columns: 1fr; } }
 @media (max-height: 560px) { .two-col.fig-wide .col-figure { display: none; } .two-col.fig-wide { grid-template-columns: 1fr; } }
 
-/* full-width figure band (slides 3 & 6, ~2.75:1 figures) — text on top, figure spans full width below.
-   fig-stack is flex:1 but its children don't stretch to fill it (flex-start alignment), so centering
-   the children as a group in the leftover space keeps the image+caption from stranding dead space below. */
-.fig-stack { display: flex; flex-direction: column; flex: 1; min-height: 0; justify-content: center; gap: clamp(0.75rem, 2vh, 1.25rem); }
+/* full-width figure band (slides 3, 6, 13, ~2.75:1 figures) — text on top, figure spans full width below.
+   packed from the top with overflow hidden so tall content never bleeds into the stat-row above. */
+.fig-stack { display: flex; flex-direction: column; flex: 1; min-height: 0; justify-content: flex-start; gap: clamp(0.75rem, 2vh, 1.25rem); overflow: hidden; }
+.fig-stack .fig-text { flex: 0 0 auto; }
 .fig-stack .fig-text .bullet-list { columns: 2; column-gap: clamp(1.5rem, 3vw, 2.5rem); }
 .fig-stack .fig-text .bullet-list li { break-inside: avoid; }
-.fig-stack .col-figure { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.fig-stack .col-figure img { width: 100%; height: auto; max-height: 62vh; border: 1px solid var(--line); object-fit: contain; }
-.fig-stack.fig-stack--compact .col-figure img { max-height: 52vh; }
+.fig-stack .col-figure { min-width: 0; min-height: 0; flex: 0 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+.fig-stack .col-figure img { max-width: 100%; max-height: 48vh; width: auto; height: auto; border: 1px solid var(--line); object-fit: contain; }
+.fig-stack.fig-stack--compact .col-figure img { max-height: 34vh; }
 @media (max-width: 700px) { .fig-stack .fig-text .bullet-list { columns: 1; } }
 @media (max-height: 560px) { .fig-stack .col-figure { display: none; } }
 
@@ -315,15 +334,12 @@ p.subtitle {
 /* --- appendix nav (jump-to / back-to controls, see CLAUDE.md's Appendix convention) --- */
 .apx-link { cursor: pointer; border: none; background: none; padding: 0; font: inherit; color: var(--signal); font-weight: 700; text-decoration: none; }
 .apx-link:hover, .apx-link:focus-visible { text-decoration: underline; }
-.dark .apx-link { color: var(--signal); }
 .apx-back { margin-bottom: clamp(0.5rem, 1.5vh, 1rem); font-size: var(--small-size); }
 
 /* --- appendix data table --- */
 .apx-table { width: 100%; border-collapse: collapse; font-size: var(--small-size); }
 .apx-table th, .apx-table td { padding: 0.45em 0.7em; border-bottom: 1px solid var(--line); text-align: left; }
 .apx-table th { font-family: var(--font-head); font-weight: 800; color: var(--ink); }
-.dark .apx-table th { color: var(--dark-ink); border-color: #2A2A2E; }
-.dark .apx-table td { border-color: #2A2A2E; }
 .apx-table td.num, .apx-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .apx-table tr.follows td:first-child { color: var(--signal); font-weight: 700; }
 .apx-table tr.counter td:first-child { color: var(--muted); font-style: italic; }
@@ -341,15 +357,18 @@ p.subtitle {
 .card p { font-size: var(--small-size); color: var(--muted); font-weight: 600; line-height: 1.45; }
 
 .stat-row { display: flex; gap: clamp(1.25rem, 4vw, 3.5rem); flex-wrap: wrap; }
-.stat { flex: 1; min-width: 140px; }
-.stat-num { font-size: clamp(2rem, 5.5vw, 4rem); font-weight: 900; color: var(--signal); line-height: 1; }
+.stat { flex: 1 1 auto; min-width: auto; }
+.stat-num { font-size: clamp(2rem, 5.5vw, 4rem); font-weight: 900; color: var(--signal); line-height: 1; white-space: nowrap; }
 .stat-label { font-size: var(--small-size); font-weight: 700; color: var(--muted); margin-top: 0.35rem; }
+
+/* smaller stat row for slides where it sits alongside a bullet list rather than
+   being the sole hero content (slide 10: three stats + two bullets share the column) */
+.stat-row--sm .stat-num { font-size: clamp(1.5rem, 3vw, 2.25rem); }
 
 .footer-cite {
     position: absolute; bottom: clamp(0.9rem, 2.5vh, 1.5rem); left: var(--slide-padding);
     font-size: var(--small-size); color: var(--muted); font-weight: 600; z-index: 1;
 }
-.dark .footer-cite { color: var(--dark-muted); }
 
 .progress-index {
     position: fixed; bottom: clamp(0.9rem, 2.5vh, 1.5rem); right: clamp(1rem, 3vw, 2.25rem);
@@ -373,7 +392,7 @@ p.subtitle {
 
 .keyboard-hint {
     position: absolute; bottom: clamp(0.9rem, 2.5vh, 1.5rem); right: var(--slide-padding);
-    font-size: var(--small-size); color: var(--dark-muted); font-weight: 700; z-index: 1;
+    font-size: var(--small-size); color: var(--muted); font-weight: 700; z-index: 1;
 }
 
 /* --- reveal-on-enter --- */
@@ -397,7 +416,7 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">DeepSeek-V3 Deep Dive · Section 1 of 5</p>
-    <h1 class="reveal r2">FP8 Mixed-Precision<br>Training</h1>
+    <h1 class="reveal r2">FP8 Mixed-Precision Training</h1>
     <p class="subtitle reveal r3">Training a 671B-parameter model in 8-bit floating point &mdash; within 0.25% of BF16 loss, at roughly 2&times; the compute throughput.</p>
 
     <div class="byte-grid reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
@@ -465,7 +484,7 @@ a { color: inherit; }
     <h2 class="reveal r2">Not everything runs in FP8</h2>
     <div class="fig-stack">
       <div class="fig-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r2"><strong>Only the 3 compute-dense GEMMs go FP8</strong> &mdash; Fprop (forward), Dgrad, Wgrad (activation/weight backward) &mdash; roughly doubling compute vs. BF16.</li>
           <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Precision-sensitive, low-FLOP ops stay BF16/FP32</strong> &mdash; embeddings, output head, MoE gating, RMSNorm, attention.</li>
           <li class="reveal r3" style="margin-top: var(--element-gap);">These dominate accuracy sensitivity but are a tiny fraction of FLOPs &mdash; protecting them is nearly free.</li>
@@ -488,7 +507,7 @@ a { color: inherit; }
     <h2 class="reveal r2">Kill the outlier at its source</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r2"><strong>Fine-grained quantization</strong> &mdash; activations scaled per 1&times;128 tile, weights per 128&times;128 block. An outlier now only inflates its own small group's scale.</li>
           <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Online quantization</strong> &mdash; max-abs computed on-the-fly per tile/block.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>FP32 accumulation promotion</strong> &mdash; partial products promoted to FP32 every N<sub>C</sub>=128 elements along the inner dimension, recovering near-FP32 accumulation on FP8 Tensor Cores.</li>
@@ -536,7 +555,7 @@ a { color: inherit; }
     </div>
     <div class="fig-stack fig-stack--compact">
       <div class="fig-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r4">First demonstration FP8 is stable end-to-end at frontier (671B MoE) scale.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);">A software precursor to hardware microscaling on NVIDIA Blackwell.</li>
         </ul>
@@ -553,10 +572,10 @@ a { color: inherit; }
 <!-- SLIDE 7 — WHY A DS/DE SHOULD CARE -->
 <section class="slide" id="slide-7" aria-label="Why a DS/DE should care">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">Why a DS/DE should care</p>
-    <h2 class="reveal r2">Precision is a per-location decision, not a global switch</h2>
-    <ul class="bullet-list" style="font-size: clamp(0.95rem, 2vw, 1.3rem); max-width: min(92vw, 1180px);">
+    <h2 class="reveal r2">Precision is per-location, not a global switch</h2>
+    <ul class="bullet-list bullet-list--lg">
       <li class="reveal r2" style="margin-bottom: var(--content-gap);">Quantize aggressively where FLOPs live; protect the few numerically sensitive ops &mdash; gating, softmax, layernorm statistics.</li>
       <li class="reveal r3" style="margin-bottom: var(--content-gap);">Fight outliers with <strong>fine-grained (block-wise) scaling + high-precision accumulation</strong>, not one scale per tensor.</li>
       <li class="reveal r4">&ldquo;Granularity beats a global scale&rdquo; applies any time you quantize models &mdash; for training or inference.</li>
@@ -570,7 +589,7 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">DeepSeek-V3 Deep Dive &middot; Section 2 of 5</p>
-    <h1 class="reveal r2">Fine-Grained MoE &amp;<br>Expert Load Balancing</h1>
+    <h1 class="reveal r2">Fine-Grained MoE &amp; Expert Load Balancing</h1>
     <p class="subtitle reveal r3">256 small routed experts (+1 shared), 8 activated per token, kept balanced by a learnable per-expert bias &mdash; not an auxiliary loss that taxes quality.</p>
 
     <div class="expert-grid reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
@@ -596,7 +615,7 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">Before</p>
-    <h2 class="reveal r2">Coarse experts, collapsing routers, and a loss that fights the model</h2>
+    <h2 class="reveal r2">Coarse experts, collapsing routers, a quality-taxing loss</h2>
     <div class="card-grid">
       <div class="card reveal r2">
         <h3>Coarse experts under-specialize</h3>
@@ -627,12 +646,12 @@ a { color: inherit; }
     <h2 class="reveal r2">Many small experts, one always-on generalist</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
-        <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
+        <div class="stat-row stat-row--sm" style="margin-bottom: clamp(0.5rem, 1.5vh, 1rem);">
           <div class="stat reveal r2"><div class="stat-num">671B</div><div class="stat-label">total params, 37B activated per token</div></div>
           <div class="stat reveal r3"><div class="stat-num">256+1</div><div class="stat-label">routed experts + 1 shared, per MoE layer</div></div>
           <div class="stat reveal r4"><div class="stat-num">8</div><div class="stat-label">routed experts activated per token</div></div>
         </div>
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r3"><strong>Fine-grained experts + shared-expert isolation</strong> &mdash; splitting into many small experts makes 8-of-256 yield combinatorially more expert combinations, so specialization gets finer; the always-on shared expert absorbs common knowledge so routed experts don't each re-learn it.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Sigmoid affinity router</strong> &mdash; token&ndash;expert affinity <code>s = Sigmoid(uᵀ&middot;eᵢ)</code>, switched from softmax (V2).</li>
         </ul>
@@ -651,10 +670,10 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 2/3</p>
-    <h2 class="reveal r2">Balance via a controller, not a loss &mdash; the headline</h2>
+    <h2 class="reveal r2">Balance via a controller, not a loss</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r2"><strong>Learnable bias bᵢ per expert</strong>, added to the affinity for top-K selection only &mdash; routing picks the top-8 of <code>s + bᵢ</code>, but the gating weight multiplying an expert's output still comes from the original <code>s</code> (no bias).</li>
           <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>A feedback controller adjusts the bias every step</strong> &mdash; overloaded expert: decrease bias by &gamma;; underloaded expert: increase bias by &gamma;.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);">This steers <em>which</em> experts get chosen to fix balance &mdash; without injecting a distortion gradient into the LM loss.</li>
@@ -694,7 +713,7 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">What it buys us</p>
-    <h2 class="reveal r2">Frontier capacity at 5.5% active params &mdash; and it beats the aux-loss baseline</h2>
+    <h2 class="reveal r2">Frontier capacity at 5.5% active params</h2>
     <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
       <div class="stat reveal r2"><div class="stat-num">5.5%</div><div class="stat-label">of 671B active per token (37B)</div></div>
       <div class="stat reveal r3"><div class="stat-num">+2.0</div><div class="stat-label">BBH vs. aux-loss baseline (39.3 vs 37.3)</div></div>
@@ -703,7 +722,7 @@ a { color: inherit; }
     </div>
     <div class="fig-stack fig-stack--compact">
       <div class="fig-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r4">Ablation on two 16B MoE models (~1.33T tokens), comparable balance in both &mdash; removing the interference gradient recovers model quality <em>and</em> expert specialization that auxiliary losses suppress.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);">Balance is enforced batch-wise, not per-sequence &mdash; a single-domain sequence isn't forced to spread uniformly, so domain-relevant experts can dominate, yielding clearer, less-redundant specialization.</li>
         </ul>
@@ -720,17 +739,154 @@ a { color: inherit; }
 <!-- SLIDE 14 — WHY A DS/DE SHOULD CARE -->
 <section class="slide" id="slide-14" aria-label="Why a DS/DE should care">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">Why a DS/DE should care</p>
-    <h2 class="reveal r2">Two balancing problems hide inside &ldquo;MoE&rdquo; &mdash; they need different tools</h2>
-    <ul class="bullet-list" style="font-size: clamp(0.95rem, 2vw, 1.3rem); max-width: min(92vw, 1180px);">
+    <h2 class="reveal r2">Two balancing problems inside &ldquo;MoE&rdquo;, two tools</h2>
+    <ul class="bullet-list bullet-list--lg">
       <li class="reveal r2" style="margin-bottom: var(--content-gap);"><strong>Statistical balance across experts</strong> (avoid collapse) &mdash; solved here by a controller-tuned bias, not a loss.</li>
       <li class="reveal r3" style="margin-bottom: var(--content-gap);"><strong>Physical balance across GPUs/nodes</strong> (avoid stragglers &amp; comms blowup) &mdash; solved by node-limited routing, expert placement, and redundant experts.</li>
       <li class="reveal r4">The deeper lesson: when a regularization loss fights your main objective, consider moving the constraint out of the loss and into a control mechanism that doesn't distort gradients.</li>
     </ul>
-    <p class="reveal r4" style="margin-top: clamp(0.75rem, 2vh, 1.25rem);"><button class="apx-link" onclick="presentation.goTo(21)">Subsequent developments: DeepEP, Kimi K2, ecosystem adoption, EP recipes &rarr;</button></p>
+    <p class="reveal r4" style="margin-top: clamp(0.75rem, 2vh, 1.25rem);"><button class="apx-link" onclick="presentation.goToId('slide-22')">Subsequent developments: DeepEP, Kimi K2, ecosystem adoption, EP recipes &rarr;</button></p>
   </div>
   <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 2 of 5</p>
+</section>
+
+<!-- APPENDIX A1 — DEEPEP -->
+<section class="slide appendix" id="slide-22" aria-label="Appendix: DeepEP">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goToId('slide-14')">&larr; Back to Section 2</button></p>
+    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 1 of 5</p>
+    <h2 class="reveal r2">DeepEP: the expert-parallel communication library</h2>
+    <div class="card-grid">
+      <div class="card reveal r2">
+        <h3>What it is</h3>
+        <p>An expert-parallel <strong>all-to-all dispatch/combine kernel library</strong> (FP8-capable), open-sourced during DeepSeek's Feb-2025 "open-source week" &mdash; built to carry the routing decisions the model computes each step.</p>
+      </div>
+      <div class="card reveal r2">
+        <h3>Communication substrate for the balancing strategy</h3>
+        <p>Node-limited routing (&sect;2.1.2), expert-to-device allocation, and redundant experts (&sect;3.4) live in the DeepSeek-V3 design and serving stack; DeepEP's kernels are engineered to carry exactly that traffic pattern.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>Two kernel families</h3>
+        <p>"Normal" kernels serve <strong>training and inference-prefill</strong>; "low-latency" pure-RDMA kernels serve <strong>decode</strong>.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>DeepSeek-V3's own training</h3>
+        <p>Used the auxiliary-loss-free bias controller (&sect;2.1.2) to balance experts &mdash; other stacks like Megatron-Core ship their own aux-loss/sinkhorn balancing.</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">github.com/deepseek-ai/DeepEP</p>
+</section>
+
+<!-- APPENDIX A1b — EPLB -->
+<section class="slide appendix" id="slide-41" aria-label="Appendix: EPLB">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goToId('slide-14')">&larr; Back to Section 2</button></p>
+    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 2 of 5</p>
+    <h2 class="reveal r2">EPLB: the expert-parallel load balancer</h2>
+    <div class="card-grid">
+      <div class="card reveal r2">
+        <h3>What it is</h3>
+        <p>The deployed <strong>expert-placement algorithm</strong> (<code>eplb.py</code>), open-sourced the same Feb-2025 "open-source week" as DeepEP &mdash; given measured per-expert load, it duplicates heavy-loaded experts and assigns replicas to GPUs to equalize per-GPU work. DeepEP moves the tokens; EPLB decides where the experts sit.</p>
+      </div>
+      <div class="card reveal r2">
+        <h3>Hierarchical policy</h3>
+        <p>Prefill, smaller EP degrees: pack expert groups onto nodes first, then replicate/place within a node &mdash; preserves node-limited routing's group locality, minimizing inter-node traffic.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>Global policy</h3>
+        <p>Decode, larger EP degrees: replicate experts globally regardless of group, spreading replicas across all GPUs &mdash; at EP320 scale, group locality isn't worth preserving.</p>
+      </div>
+      <div class="card reveal r3">
+        <h3>Relation to the paper</h3>
+        <p>The productionized form of &sect;3.4's redundant-experts strategy and expert-to-device allocation, driven by measured load rather than a static assignment.</p>
+      </div>
+    </div>
+  </div>
+  <p class="footer-cite">github.com/deepseek-ai/EPLB</p>
+</section>
+
+<!-- APPENDIX A2 — KIMI K2 SPARSITY SCALING LAW -->
+<section class="slide appendix" id="slide-23" aria-label="Appendix: Kimi K2 sparsity">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goToId('slide-14')">&larr; Back to Section 2</button></p>
+    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 3 of 5</p>
+    <h2 class="reveal r2">Sparsity scaling law sized K2's expert pool</h2>
+    <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
+      <div class="stat reveal r2"><div class="stat-num">384+1</div><div class="stat-label">routed + shared experts, 8 activated (up from V3's 256)</div></div>
+      <div class="stat reveal r3"><div class="stat-num">1.04T</div><div class="stat-label">total params, 32.6B activated per token</div></div>
+    </div>
+    <ul class="bullet-list">
+      <li class="reveal r3">A <strong>pre-training sparsity scaling law</strong>: hold activated experts fixed at 8 (constant FLOPs/token), vary <em>total</em> experts &rarr; sparsity levels 8 / 16 / 32 / 48. Higher sparsity consistently lowers loss.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">At a fixed validation loss of 1.5, sparsity-48 needs <strong>1.69&times; / 1.39&times; / 1.15&times; fewer FLOPs</strong> than sparsity 8 / 16 / 32 respectively &mdash; the result that motivated K2's 256&rarr;384 expansion.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">Kimi K2 Technical Report &middot; arXiv:2507.20534 &middot; Fig. 5, Table 2</p>
+</section>
+
+<!-- APPENDIX A3 — ROUTED + SHARED EXPERT ADOPTION -->
+<section class="slide appendix" id="slide-24" aria-label="Appendix: architecture adoption">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goToId('slide-14')">&larr; Back to Section 2</button></p>
+    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 4 of 5</p>
+    <h2 class="reveal r2">Routed + shared-expert MoE now dominates</h2>
+    <div class="reveal r3" style="overflow-x: auto;">
+      <table class="apx-table">
+        <thead><tr><th>Model</th><th class="num">Routed + shared</th><th class="num">Total / active</th><th>&gt;100B?</th></tr></thead>
+        <tbody>
+          <tr class="follows"><td>DeepSeek-V4-Pro</td><td class="num">384 + 1</td><td class="num">1.6T / 49B</td><td>Yes</td></tr>
+          <tr class="follows"><td>Kimi K2</td><td class="num">384 + 1</td><td class="num">1.04T / 32.6B</td><td>Yes</td></tr>
+          <tr class="follows"><td>GLM-5 / 5.2</td><td class="num">256 + 1</td><td class="num">744B / 40B</td><td>Yes</td></tr>
+          <tr class="follows"><td>Llama 4 Maverick</td><td class="num">128 + 1</td><td class="num">400B / 17B</td><td>Yes</td></tr>
+          <tr class="follows"><td>Qwen 3.5 (397B-A17B)</td><td class="num">512 + 1</td><td class="num">397B / 17B</td><td>Yes</td></tr>
+          <tr><td>Gemma 4 (26B-A4B)</td><td class="num">128 + 1</td><td class="num">25.2B / 3.8B</td><td>No</td></tr>
+          <tr class="counter"><td>MiniMax-01 / M2</td><td class="num">32 / 256, no shared</td><td class="num">456B/45.9B &middot; 229.9B/9.8B</td><td>Yes</td></tr>
+          <tr class="counter"><td>DBRX</td><td class="num">16, no shared</td><td class="num">132B / 36B</td><td>Yes</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption" style="max-width: none; margin-top: clamp(0.6rem, 1.5vh, 1rem);"><span style="color: var(--signal); font-weight: 700;">Red</span> = follows the routed+shared pattern &middot; <span style="color: var(--muted); font-style: italic;">italic</span> = routed-only minority &middot; newest model per builder shown &middot; Gemma 4's MoE variant follows the pattern but sits far below &gt;100B scale</p>
+  </div>
+  <p class="footer-cite">GLM-5.2 arXiv:2602.15763 &middot; DeepSeek-V4, Llama 4, Qwen 3.5 &amp; Gemma 4 model cards</p>
+</section>
+
+<!-- APPENDIX A4 — EP VS FSDP/TP/PP -->
+<section class="slide appendix" id="slide-25" aria-label="Appendix: EP efficiency">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goToId('slide-14')">&larr; Back to Section 2</button></p>
+    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 5 of 5</p>
+    <h2 class="reveal r2">EP is replacing TP as the sharding axis</h2>
+    <ul class="bullet-list bullet-list--dense">
+      <li class="reveal r2">Routed-expert FFNs hold ~80&ndash;90% of params in a fine-grained MoE (&asymp;97% DeepSeek-V3, &asymp;96% Qwen3-235B) &mdash; so <strong>EP alone</strong> captures nearly all vRAM pressure; the residue goes to ZeRO/FSDP or DP-attention.</li>
+      <li class="reveal r2" style="margin-top: var(--element-gap);"><strong>Coverage with little regret</strong>: TP shards attention and MLP both, but with experts this dominant, EP-only sharding sheds TP's cost for almost no regret.</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Lighter communication</strong>: TP all-reduces full activations twice per block, every layer; EP needs only a per-MoE-layer all-to-all [&sect;3.2.1], cut further by node-limited routing [&sect;2.1.2] and hidden by DualPipe &mdash; a co-design result, not unconditional (at very wide EP the all-to-all can itself dominate).</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Cross-node scaling</strong>: TP's all-reduce collapses over inter-node interconnect (stays &le;8, one NVLink domain); EP's all-to-all scales across many nodes (EP64/8 nodes training; EP32&rarr;EP320 inference).</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">
+        <strong>Training</strong> &mdash; no TP in either recipe:
+        <ul class="bullet-list bullet-list--sub">
+          <li>DeepSeek-V3: PP16 (DualPipe) + EP64 + ZeRO-1 [&sect;3.2]</li>
+          <li>Kimi K2: PP16 + EP16 + ZeRO-1</li>
+        </ul>
+      </li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">
+        <strong>Inference</strong> &mdash; three sources of authority, don't conflate them:
+        <ul class="bullet-list bullet-list--sub">
+          <li><em>Paper design</em> [&sect;3.4]: EP32 prefill / EP320 decode + DP-attention, residual TP4 on attention only</li>
+          <li><em>DeepSeek's own production system</em>, not the paper: EP144 decode, DP144, 18 nodes/unit, 32 redundant experts, 2+1 experts/GPU</li>
+          <li><em>LMSYS/SGLang</em>, independent reproduction: up to 3.3&times; prefill / 5.2&times; decode vs. TP16</li>
+        </ul>
+      </li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Scope</strong>: EP replaces TP, not ZeRO/FSDP or PP.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">arXiv:2412.19437 &middot; DeepSeek Day-6 inference overview &middot; LMSYS large-scale EP &middot; Megatron-Core parallelism guide</p>
 </section>
 
 <!-- SLIDE 15 — SECTION 3 TITLE -->
@@ -738,13 +894,13 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">DeepSeek-V3 Deep Dive &middot; Section 3 of 5</p>
-    <h1 class="reveal r2">Multi-Head Latent<br>Attention (MLA)</h1>
+    <h1 class="reveal r2">Multi-Head Latent Attention (MLA)</h1>
     <p class="subtitle reveal r3">Cache one small compressed latent per token instead of full per-head keys and values &mdash; the piece that makes long-context inference economical.</p>
 
     <div class="stat-row reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
-      <div class="stat"><div class="stat-num">576</div><div class="stat-label" style="color: var(--dark-muted);">MLA cache, elements/token/layer</div></div>
-      <div class="stat"><div class="stat-num">32,768</div><div class="stat-label" style="color: var(--dark-muted);">the MHA baseline it replaces</div></div>
-      <div class="stat"><div class="stat-num">~57&times;</div><div class="stat-label" style="color: var(--dark-muted);">smaller, no quality loss</div></div>
+      <div class="stat"><div class="stat-num">576</div><div class="stat-label">MLA cache, elements/token/layer</div></div>
+      <div class="stat"><div class="stat-num">32,768</div><div class="stat-label">the MHA baseline it replaces</div></div>
+      <div class="stat"><div class="stat-num">~57&times;</div><div class="stat-label">smaller, no quality loss</div></div>
     </div>
   </div>
   <p class="footer-cite">DeepSeek-AI, 2024 &middot; arXiv:2412.19437</p>
@@ -755,7 +911,7 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">Before</p>
-    <h2 class="reveal r2">The KV cache, not compute, caps how you serve</h2>
+    <h2 class="reveal r2">The KV cache, not compute, caps serving</h2>
     <div class="card-grid">
       <div class="card reveal r2">
         <h3>KV cache is the bottleneck</h3>
@@ -786,7 +942,7 @@ a { color: inherit; }
     <h2 class="reveal r2">One small latent, not a cache per head</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r2"><strong>Low-rank joint KV compression</strong> &mdash; down-project the hidden state to a small latent <code>c<sup>KV</sup> = W<sup>DKV</sup>&middot;h</code>, with <strong>d<sub>c</sub> = 512</strong> (&ll; n<sub>h</sub>&middot;d<sub>h</sub> = 16,384).</li>
           <li class="reveal r3" style="margin-top: var(--element-gap);">Keys/values are reconstructed by up-projections <code>W<sup>UK</sup>, W<sup>UV</sup></code> only when needed.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Only the latent is cached.</strong></li>
@@ -804,10 +960,10 @@ a { color: inherit; }
 <!-- SLIDE 18 — FIX PART 2 -->
 <section class="slide" id="slide-18" aria-label="The fix, part 2">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 2/4</p>
     <h2 class="reveal r2">Why caching just the latent costs nothing extra</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2"><strong>Intuition</strong> &mdash; instead of unpacking the latent back into full per-head keys for every cached token and dotting each against the query, fold that "unpack" step into the query's own projection once, up front. The query effectively learns to read the compressed latent directly, so per-head keys are never rebuilt. The value side mirrors this: unpacking folds into the output projection instead.</li>
       <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>The shortcut:</strong> <code>q<sub>t</sub>&middot;k<sub>j</sub> = c<sub>t</sub><sup>Qᵀ</sup>(W<sup>UQᵀ</sup>W<sup>UK</sup>)c<sub>j</sub><sup>KV</sup></code> &mdash; the middle term doesn't depend on the token or its position, so it collapses into one fixed matrix, folded in once instead of reconstructed per token.</li>
       <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Payoff:</strong> the content-side cache holds only the 512-d latent, and decode does no extra reconstruction compute to use it &mdash; this is what makes "cache the latent, not the keys" actually free. (The positional side adds one more small piece, next.)</li>
@@ -819,10 +975,10 @@ a { color: inherit; }
 <!-- SLIDE 19 — FIX PART 3 -->
 <section class="slide" id="slide-19" aria-label="The fix, part 3">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 3/4</p>
     <h2 class="reveal r2">Two computation modes for two different workloads</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size);">
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2"><strong>Materialize / &ldquo;MHA mode&rdquo;</strong> &mdash; up-project the latent back to full per-head K/V, run standard attention. For <strong>training &amp; prefill</strong>: many tokens at once, compute-bound, so materializing once and reusing it is FLOP-efficient.</li>
       <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Absorb / &ldquo;MQA mode&rdquo;</strong> &mdash; fold the up-projections in (the trick above), attend directly on the shared latent. For <strong>decoding</strong>: one token per step, memory-bandwidth-bound, so the tiny latent cache is what matters.</li>
     </ul>
@@ -844,10 +1000,10 @@ a { color: inherit; }
 <!-- SLIDE 20 — FIX PART 4 -->
 <section class="slide" id="slide-20" aria-label="The fix, part 4">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 4/4</p>
-    <h2 class="reveal r2">RoPE breaks the fold &mdash; so position rides its own channel</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
+    <h2 class="reveal r2">RoPE breaks the fold, so position decouples</h2>
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2"><strong>Intuition</strong> &mdash; RoPE rotates each key by an amount that depends on its position. That rotation would land in the <em>middle</em> of the pre-folded shortcut matrix above &mdash; and because it differs for every token pair, it can't be baked into a single fixed matrix ahead of time. The shortcut falls apart, forcing keys to be rebuilt from the latent at every step.</li>
       <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Fix:</strong> don't rotate the compressed content at all &mdash; carry position on a small <strong>separate</strong> channel that gets its own rotation: per-head decoupled query <code>q<sup>R</sup> = RoPE(W<sup>QR</sup>&middot;c<sup>Q</sup>)</code>, one shared decoupled key <code>k<sup>R</sup> = RoPE(W<sup>KR</sup>&middot;h)</code>, both dim <strong>d<sub>h</sub><sup>R</sup> = 64</strong>, concatenated onto the content parts.</li>
       <li class="reveal r4" style="margin-top: var(--element-gap);">Each attention score = content term (from the latent, absorption-friendly) + positional term (from the decoupled channel).</li>
@@ -859,137 +1015,47 @@ a { color: inherit; }
 <!-- SLIDE 21 — WHAT IT BUYS US + WHY A DS/DE SHOULD CARE -->
 <section class="slide" id="slide-21" aria-label="What it buys us, and why a DS/DE should care">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">What it buys us &mdash; and why it matters</p>
     <h2 class="reveal r2">576 vs. 32,768 &mdash; ~57&times; smaller, no quality loss</h2>
     <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
-      <div class="stat reveal r2"><div class="stat-num">~57&times;</div><div class="stat-label" style="color: var(--dark-muted);">smaller cache than equivalently-shaped MHA</div></div>
-      <div class="stat reveal r3"><div class="stat-num">&minus;93.3%</div><div class="stat-label" style="color: var(--dark-muted);">V2's reported KV-cache cut</div></div>
-      <div class="stat reveal r4"><div class="stat-num">&times;5.76</div><div class="stat-label" style="color: var(--dark-muted);">V2's max generation-throughput gain</div></div>
+      <div class="stat reveal r2"><div class="stat-num">~57&times;</div><div class="stat-label">smaller cache than equivalently-shaped MHA</div></div>
+      <div class="stat reveal r3"><div class="stat-num">&minus;93.3%</div><div class="stat-label">V2's reported KV-cache cut</div></div>
+      <div class="stat reveal r4"><div class="stat-num">&times;5.76</div><div class="stat-label">V2's max generation-throughput gain</div></div>
     </div>
-    <ul class="bullet-list" style="font-size: clamp(0.85rem, 1.7vw, 1.1rem); max-width: min(92vw, 1180px);">
+    <ul class="bullet-list">
       <li class="reveal r4">Unlike MQA/GQA, MLA doesn't trade quality for compression &mdash; reported performance on par with or better than MHA; each head still reads its own slice of the shared latent, preserving per-head diversity. This small per-token cache is what makes V3's 128K context economically serveable.</li>
       <li class="reveal r4" style="margin-top: var(--element-gap);">The serving bottleneck for long-context LLMs is usually <strong>KV-cache memory bandwidth</strong>, not FLOPs &mdash; MLA shows you can attack it with a <strong>low-rank bottleneck</strong> rather than by throwing away heads, but only if you handle position encoding carefully.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">The ~57&times; is against an <strong>MHA</strong> baseline nobody ships &mdash; against modern GQA the gap is smaller: ~2.7&times; vs. Qwen3-235B-A22B's GQA (4 KV heads &times; 94 layers &asymp; 188 KB/token vs. MLA's ~70 KB), and roughly <strong>parity</strong> in per-token growth vs. Gemma 3 27B's GQA+sliding-window hybrid (~80 KB/token) &mdash; but that comes from truncating 5 of 6 layers to a 1024-token window plus a large fixed buffer; MLA reaches its number with full attention every layer.</li>
     </ul>
   </div>
   <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 3 of 5</p>
-</section>
-
-<!-- APPENDIX A1 — DEEPEP -->
-<section class="slide appendix" id="slide-22" aria-label="Appendix: DeepEP">
-  <div class="grid-backdrop"></div>
-  <div class="slide-content">
-    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goTo(13)">&larr; Back to Section 2</button></p>
-    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 1 of 4</p>
-    <h2 class="reveal r2">DeepEP: the expert-parallel communication library behind node-limited routing</h2>
-    <div class="card-grid">
-      <div class="card reveal r2">
-        <h3>What it is</h3>
-        <p>An expert-parallel <strong>all-to-all dispatch/combine kernel library</strong> (FP8-capable), open-sourced during DeepSeek's Feb-2025 "open-source week" &mdash; built to carry the routing decisions the model computes each step.</p>
-      </div>
-      <div class="card reveal r2">
-        <h3>Communication substrate for the balancing strategy</h3>
-        <p>Node-limited routing (&sect;2.1.2), expert-to-device allocation, and redundant experts (&sect;3.4) live in the DeepSeek-V3 design and serving stack; DeepEP's kernels are engineered to carry exactly that traffic pattern.</p>
-      </div>
-      <div class="card reveal r3">
-        <h3>Two kernel families</h3>
-        <p>"Normal" kernels serve <strong>training and inference-prefill</strong>; "low-latency" pure-RDMA kernels serve <strong>decode</strong>.</p>
-      </div>
-      <div class="card reveal r3">
-        <h3>DeepSeek-V3's own training</h3>
-        <p>Used the auxiliary-loss-free bias controller (&sect;2.1.2) to balance experts &mdash; other stacks like Megatron-Core ship their own aux-loss/sinkhorn balancing.</p>
-      </div>
-    </div>
-  </div>
-  <p class="footer-cite">github.com/deepseek-ai/DeepEP</p>
-</section>
-
-<!-- APPENDIX A2 — KIMI K2 SPARSITY SCALING LAW -->
-<section class="slide appendix" id="slide-23" aria-label="Appendix: Kimi K2 sparsity">
-  <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
-    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goTo(13)">&larr; Back to Section 2</button></p>
-    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 2 of 4</p>
-    <h2 class="reveal r2">Kimi K2's sparsity scaling law sized its expert pool</h2>
-    <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
-      <div class="stat reveal r2"><div class="stat-num">384+1</div><div class="stat-label">routed + shared experts, 8 activated (up from V3's 256)</div></div>
-      <div class="stat reveal r3"><div class="stat-num">1.04T</div><div class="stat-label">total params, 32.6B activated per token</div></div>
-    </div>
-    <ul class="bullet-list" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
-      <li class="reveal r3">A <strong>pre-training sparsity scaling law</strong>: hold activated experts fixed at 8 (constant FLOPs/token), vary <em>total</em> experts &rarr; sparsity levels 8 / 16 / 32 / 48. Higher sparsity consistently lowers loss.</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);">At a fixed validation loss of 1.5, sparsity-48 needs <strong>1.69&times; / 1.39&times; / 1.15&times; fewer FLOPs</strong> than sparsity 8 / 16 / 32 respectively &mdash; the result that motivated K2's 256&rarr;384 expansion.</li>
-    </ul>
-  </div>
-  <p class="footer-cite">Kimi K2 Technical Report &middot; arXiv:2507.20534 &middot; Fig. 5, Table 2</p>
-</section>
-
-<!-- APPENDIX A3 — ROUTED + SHARED EXPERT ADOPTION -->
-<section class="slide appendix" id="slide-24" aria-label="Appendix: architecture adoption">
-  <div class="grid-backdrop"></div>
-  <div class="slide-content">
-    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goTo(13)">&larr; Back to Section 2</button></p>
-    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 3 of 4</p>
-    <h2 class="reveal r2">Routed + shared-expert MoE is the dominant architecture for large models</h2>
-    <div class="reveal r3" style="overflow-x: auto;">
-      <table class="apx-table">
-        <thead><tr><th>Model</th><th class="num">Routed + shared</th><th class="num">Total / active</th><th>&gt;100B?</th></tr></thead>
-        <tbody>
-          <tr class="follows"><td>DeepSeek-V3</td><td class="num">256 + 1</td><td class="num">671B / 37B</td><td>Yes</td></tr>
-          <tr class="follows"><td>DeepSeek-V4-Pro</td><td class="num">384 + 1</td><td class="num">1.6T / 49B</td><td>Yes</td></tr>
-          <tr class="follows"><td>Kimi K2</td><td class="num">384 + 1</td><td class="num">1.04T / 32.6B</td><td>Yes</td></tr>
-          <tr class="follows"><td>GLM-4.5 / 4.6</td><td class="num">160 + 1</td><td class="num">355B / 32B</td><td>Yes</td></tr>
-          <tr class="follows"><td>GLM-5 / 5.2</td><td class="num">256 + 1</td><td class="num">744B / 40B</td><td>Yes</td></tr>
-          <tr class="follows"><td>Llama 4 Maverick</td><td class="num">128 + 1</td><td class="num">400B / 17B</td><td>Yes</td></tr>
-          <tr class="follows"><td>Llama 4 Scout</td><td class="num">16 + 1</td><td class="num">109B / 17B</td><td>Yes</td></tr>
-          <tr class="follows"><td>Qwen 3.5 (397B-A17B)</td><td class="num">512 + 1</td><td class="num">397B / 17B</td><td>Yes</td></tr>
-          <tr><td>Gemma 4 (26B-A4B)</td><td class="num">128 + 1</td><td class="num">25.2B / 3.8B</td><td>No</td></tr>
-          <tr class="counter"><td>Qwen3-235B-A22B</td><td class="num">128, no shared</td><td class="num">235B / 22B</td><td>Yes</td></tr>
-          <tr class="counter"><td>MiniMax-01 / M2</td><td class="num">32 / 256, no shared</td><td class="num">456B/45.9B &middot; 229.9B/9.8B</td><td>Yes</td></tr>
-          <tr class="counter"><td>DBRX</td><td class="num">16, no shared</td><td class="num">132B / 36B</td><td>Yes</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="caption" style="max-width: none; margin-top: clamp(0.6rem, 1.5vh, 1rem);"><span style="color: var(--signal); font-weight: 700;">Red</span> = follows the routed+shared pattern &middot; <span style="color: var(--muted); font-style: italic;">italic</span> = routed-only minority &middot; Qwen 3.5 reintroduced the shared expert Qwen3-235B had dropped &middot; Gemma 4's MoE variant follows the pattern but sits far below &gt;100B scale</p>
-  </div>
-  <p class="footer-cite">GLM-4.5 arXiv:2508.06471 &middot; GLM-5.2 arXiv:2602.15763 &middot; Llama 4 &amp; Gemma 4 model cards</p>
-</section>
-
-<!-- APPENDIX A4 — EP VS FSDP/TP/PP -->
-<section class="slide appendix" id="slide-25" aria-label="Appendix: EP efficiency">
-  <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
-    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goTo(13)">&larr; Back to Section 2</button></p>
-    <p class="eyebrow reveal">Appendix &middot; Subsequent developments &middot; 4 of 4</p>
-    <h2 class="reveal r2">EP is replacing TP as the primary parameter-sharding axis</h2>
-    <ul class="bullet-list" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
-      <li class="reveal r2">Routed-expert FFNs hold ~80&ndash;90% of params in a fine-grained MoE (&asymp;97% for DeepSeek-V3, &asymp;96% for Qwen3-235B, from public configs) &mdash; so <strong>EP alone</strong> captures nearly all the vRAM pressure; the small non-expert residue is handled by ZeRO/FSDP or DP-attention.</li>
-      <li class="reveal r2" style="margin-top: var(--element-gap);"><strong>Coverage with little regret</strong>: TP shards attention and MLP both, but with experts this dominant, EP-only sharding sheds TP's cost for almost no regret.</li>
-      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Lighter communication</strong>: TP needs an all-reduce on full activations twice per block, every layer; EP needs only a per-MoE-layer all-to-all [&sect;3.2.1], cut further by node-limited routing [&sect;2.1.2] and hidden by DualPipe overlap &mdash; a co-design result, not unconditional (at very wide EP the all-to-all can itself dominate).</li>
-      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Cross-node scaling</strong>: TP's all-reduce collapses over inter-node interconnect (stays &le;8, one NVLink domain); EP's all-to-all scales across many nodes (EP64/8 nodes training; EP32&rarr;EP320 inference).</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Training</strong>: DeepSeek-V3 = PP16 (DualPipe) + EP64 + ZeRO-1, <strong>no TP</strong> [&sect;3.2]; Kimi K2 = PP16 + EP16 + ZeRO-1, also no TP. <strong>Inference</strong>: wide EP (EP32 prefill / EP320 decode; EP144 production) + DP-attention, small residual TP4 on attention only [&sect;3.4.1] &mdash; LMSYS reports up to 3.3&times; prefill / 5.2&times; decode vs. a TP16 baseline. Scope: EP replaces TP, not ZeRO/FSDP or PP.</li>
-    </ul>
-  </div>
-  <p class="footer-cite">arXiv:2412.19437 &middot; DeepSeek Day-6 inference overview &middot; LMSYS large-scale EP &middot; Megatron-Core parallelism guide</p>
 </section>
 
 <!-- SLIDE 26 — SECTION 4 OF 5: MULTI-TOKEN PREDICTION -->
 <section class="slide" id="slide-26" aria-label="Section 4 of 5: Multi-Token Prediction">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
-    <p class="eyebrow reveal">Section 4 of 5</p>
+    <p class="eyebrow reveal">DeepSeek-V3 Deep Dive &middot; Section 4 of 5</p>
     <h1 class="reveal r2">Multi-Token Prediction</h1>
     <p class="subtitle reveal r2">Add a small module that predicts the 2nd-next token during training (keeping the full causal chain), then discard it or reuse it as a speculative-decoding draft head</p>
+
+    <div class="stat-row reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
+      <div class="stat"><div class="stat-num">D+1</div><div class="stat-label">supervised predictions per token (D = 1)</div></div>
+      <div class="stat"><div class="stat-num">85&ndash;90%</div><div class="stat-label">token acceptance rate as draft head</div></div>
+      <div class="stat"><div class="stat-num">~1.8&times;</div><div class="stat-label">decoding TPS via speculative decoding</div></div>
+    </div>
   </div>
-  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437</p>
+  <p class="footer-cite">DeepSeek-AI, 2024 &middot; arXiv:2412.19437</p>
 </section>
 
 <!-- SLIDE 27 — PROBLEM -->
 <section class="slide" id="slide-27" aria-label="Problem: sparse single-token signal">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
-    <p class="eyebrow reveal">Before &mdash; prior SOTA &amp; why it hurt</p>
-    <h2 class="reveal r2">Standard next-token prediction gives one sparse learning signal per position</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
+  <div class="slide-content">
+    <p class="eyebrow reveal">Before</p>
+    <h2 class="reveal r2">Next-token prediction gives one sparse signal per position</h2>
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2">Each position gives a <strong>single, relatively sparse learning signal</strong> &mdash; the model is never explicitly trained to look ahead or pre-plan representations beyond the immediate next token.</li>
       <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Gloeckle et al. (2024)</strong> &mdash; parallel multi-token prediction with <strong>independent heads</strong> densifies the signal, but <strong>breaks the causal chain</strong>: each head sees only the shared trunk, not the predicted intermediate tokens.</li>
       <li class="reveal r4" style="margin-top: var(--element-gap);">The result: extra tokens are predicted <strong>independently</strong>, with no conditioning on each other &mdash; losing the autoregressive structure that makes sequential modeling work.</li>
@@ -1002,7 +1068,7 @@ a { color: inherit; }
 <section class="slide" id="slide-28" aria-label="The DeepSeek-V3 fix: sequential MTP modules">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
-    <p class="eyebrow reveal">The DeepSeek-V3 fix</p>
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 1/2</p>
     <h2 class="reveal r2">Sequential MTP modules that <strong>preserve the causal chain</strong></h2>
     <div class="two-col fig-wide reveal r2">
       <div class="col-figure">
@@ -1024,12 +1090,12 @@ a { color: inherit; }
 <!-- SLIDE 29 — MODULE STRUCTURE & OBJECTIVE -->
 <section class="slide" id="slide-29" aria-label="Module structure & objective">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
-    <p class="eyebrow reveal">The DeepSeek-V3 fix</p>
-    <h2 class="reveal r2">Plan one step ahead — and chain it so the causal order never breaks</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 2/2</p>
+    <h2 class="reveal r2">Plan one step ahead, chained to stay causal</h2>
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2"><strong>Denser signal from the same data</strong> — every position now also answers "what comes <em>after</em> the next token?", so each token yields <strong>D+1 supervised predictions</strong> instead of 1 (data efficiency).</li>
-      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Forced forward planning, kept causal</strong> — module <em>k</em> predicts on top of module <em>k&minus;1</em>'s conclusion (not in parallel), so the trunk is pressured to encode anticipatory representations <strong>and</strong> the autoregressive chain stays whole — the deliberate fix for Gloeckle's independent heads. It reuses the main model's own <strong>shared embedding and output head</strong> (same task, one step deeper); only a small <code>TRM_k</code> block + projection <code>M_k</code> are new per depth. <button class="apx-link" onclick="presentation.goTo(39)" style="margin-left: 0.5em;">[deeper on the module math &rarr;]</button></li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Forced forward planning, kept causal</strong> — module <em>k</em> predicts on top of module <em>k&minus;1</em>'s conclusion (not in parallel), so the trunk is pressured to encode anticipatory representations <strong>and</strong> the autoregressive chain stays whole — the deliberate fix for Gloeckle's independent heads. It reuses the main model's own <strong>shared embedding and output head</strong> (same task, one step deeper); only a small <code>TRM_k</code> block + projection <code>M_k</code> are new per depth. <button class="apx-link" onclick="presentation.goToId('slide-39')" style="margin-left: 0.5em;">[deeper on the module math &rarr;]</button></li>
       <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>A gentle, self-tapering nudge</strong> — training adds one cross-entropy term per depth, averaged and weighted by <strong>&lambda;</strong> so it nudges rather than rivals the main loss; <strong>&lambda;</strong> drops <strong>0.3&to;0.1</strong> mid-training so the primary objective reclaims the wheel near convergence. <strong>D = 1</strong> in V3.</li>
     </ul>
   </div>
@@ -1039,78 +1105,125 @@ a { color: inherit; }
 <!-- SLIDE 30 — WHAT IT BUYS US -->
 <section class="slide" id="slide-30" aria-label="What it buys us">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">What it buys us</p>
-    <h2 class="reveal r2">Consistent gains on reasoning &amp; coding &mdash; and ~1.8&times; inference speedup</h2>
+    <h2 class="reveal r2">Better reasoning and coding, plus ~1.8&times; speedup</h2>
     <div class="stat-row" style="margin-bottom: clamp(0.75rem, 2.5vh, 1.5rem);">
-      <div class="stat reveal r2"><div class="stat-num">~1.8&times;</div><div class="stat-label" style="color: var(--dark-muted);">decoding TPS with speculative decoding</div></div>
-      <div class="stat reveal r3"><div class="stat-num">85&ndash;90%</div><div class="stat-label" style="color: var(--dark-muted);">token acceptance rate as draft head</div></div>
+      <div class="stat reveal r2"><div class="stat-num">~1.8&times;</div><div class="stat-label">decoding TPS with speculative decoding</div></div>
+      <div class="stat reveal r3"><div class="stat-num">85&ndash;90%</div><div class="stat-label">token acceptance rate as draft head</div></div>
     </div>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2"><strong>Small MoE</strong> (15.7B/2.4B, 1.33T tokens): HumanEval 26.8 vs 20.7, GSM8K 31.4 vs 25.4, MMLU 53.3 vs 50.0.</li>
       <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Large MoE</strong> (228.7B/20.9B, 540B tokens): HumanEval 53.7 vs 44.5, DROP 70.6 vs 68.5 &mdash; improvement holds as scale increases.</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Speculative decoding:</strong> MTP-as-draft-head achieves 85&ndash;90% token acceptance, giving ~1.8&times; decoding TPS. <button class="apx-link" onclick="presentation.goTo(40)" style="margin-left: 0.5em;">[why speculative decoding is faster &rarr;]</button></li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Speculative decoding:</strong> MTP-as-draft-head achieves 85&ndash;90% token acceptance, giving ~1.8&times; decoding TPS. <button class="apx-link" onclick="presentation.goToId('slide-40')" style="margin-left: 0.5em;">[why speculative decoding is faster &rarr;]</button></li>
     </ul>
   </div>
   <p class="footer-cite">DeepSeek-V3 Technical Report &middot; Table 4 &middot; &sect;5.4.3</p>
 </section>
 
 <!-- SLIDE 31 — INFERENCE USES -->
-<section class="slide" id="slide-31" aria-label="Two inference uses">
+<section class="slide" id="slide-31" aria-label="How many MTP layers is enough">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
-    <p class="eyebrow reveal">Inference: two uses</p>
-    <h2 class="reveal r2">Discard for zero-cost serving <strong>or</strong> repurpose as a speculative-decoding draft head</h2>
+    <p class="eyebrow reveal">What it buys us</p>
+    <h2 class="reveal r2">Reuse as draft head &mdash; how deep?</h2>
     <div class="two-col fig-wide reveal r2">
       <div class="col-figure">
         <img src="assets/ext_speculative_decoding.gif" alt="Animated draft-target diagram: draft model proposes several candidate tokens, target model verifies them in one parallel forward pass, accepts the matching prefix">
         <p class="caption">NVIDIA Technical Blog Fig. 1 &mdash; speculative decoding: draft proposes, target verifies in parallel</p>
       </div>
-      <div class="col-text">
-        <ul class="bullet-list">
-          <li class="reveal r2"><strong>Option 1: Discard</strong> &mdash; the main model works standalone, zero added serving cost. MTP's training-time quality boost is free at inference.</li>
-          <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Option 2: Repurpose</strong> &mdash; the trained MTP module becomes a speculative-decoding draft head. It proposes the 2nd-next token and the main model verifies in parallel, with <strong>no separate draft network</strong>. 85&ndash;90% acceptance yields ~1.8&times; TPS.</li>
-        </ul>
+      <div class="col-text" style="min-height: 0;">
+        <p class="reveal r2" style="font-size: var(--body-size); margin-bottom: var(--element-gap);">The trained MTP module becomes a speculative-decoding draft head &mdash; it proposes future tokens and the main model verifies in parallel, <strong>no separate draft network</strong>. Later models mostly stayed shallow, one deepened via parameter sharing:</p>
+        <div class="reveal r3" style="overflow-x: auto; min-height: 0;">
+          <table class="apx-table">
+            <thead><tr><th>Model</th><th>MTP depth</th><th>Note</th></tr></thead>
+            <tbody>
+              <tr><td>DeepSeek-V3</td><td>1 module</td><td>85&ndash;90% accept &rarr; ~1.8&times; TPS</td></tr>
+              <tr><td>DeepSeek-V4</td><td>1 ("MTP-1")</td><td>DSpark: 5-token blocks instead</td></tr>
+              <tr><td>GLM-5 / 5.2</td><td>3 layers, shared params</td><td>accept len 2.76 @ 4 steps (vs. 2.55)</td></tr>
+              <tr><td>Qwen 3.5</td><td>1 head</td><td><code>mtp_num_hidden_layers: 1</code></td></tr>
+              <tr><td>Gemma 4</td><td>4-layer separate drafter</td><td>cross-attends main model's KVs; up to 3&times;</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="caption reveal r4" style="max-width: none; margin-top: var(--element-gap);">Acceptance compounds down the chain and stays high only at the first 1&ndash;2 positions &mdash; later ones extrapolate from unverified drafts, so gains saturate fast. Most ship depth 1; GLM-5's depth 3 comes from sharing params, not adding them.</p>
       </div>
     </div>
   </div>
-  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; &sect;2.2, &sect;5.4.3 &middot; NVIDIA Blog</p>
+  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; &sect;2.2, &sect;5.4.3 &middot; NVIDIA Blog &middot; GLM-5.2 arXiv:2602.15763 &middot; DSpark arXiv:2607.05147</p>
 </section>
 
 <!-- SLIDE 32 — WHY A DS/DE SHOULD CARE -->
 <section class="slide" id="slide-32" aria-label="Why a DS/DE should care">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">Why a DS/DE should care</p>
     <h2 class="reveal r2">One architectural addition yields two independent wins</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2"><strong>Win 1:</strong> A free training-time quality boost (drop it at serving, zero cost).</li>
       <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Win 2:</strong> An optional ~1.8&times; inference speedup by reusing the same module as a speculative-decoding draft head.</li>
       <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>General lesson:</strong> auxiliary training objectives that densify the signal can pay off even when discarded. If you preserve the right structure (causal ordering here), a training-time head can be recycled into an inference-time accelerator.</li>
     </ul>
     <div class="stat-row" style="margin-top: var(--content-gap);">
-      <div class="stat reveal r4"><div class="stat-num">&times;1.8</div><div class="stat-label" style="color: var(--dark-muted);">throughput from one module</div></div>
-      <div class="stat reveal r4"><div class="stat-num">&times;2</div><div class="stat-label" style="color: var(--dark-muted);">independent wins</div></div>
+      <div class="stat reveal r4"><div class="stat-num">&times;1.8</div><div class="stat-label">throughput from one module</div></div>
+      <div class="stat reveal r4"><div class="stat-num">&times;2</div><div class="stat-label">independent wins</div></div>
     </div>
   </div>
   <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 4 of 5</p>
 </section>
 
+<!-- APPENDIX A5 — MTP MODULE INTERNALS -->
+<section class="slide appendix" id="slide-39" aria-label="Appendix: MTP module internals">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goToId('slide-29')">&larr; Back to Plan one step ahead</button></p>
+    <p class="eyebrow reveal">Appendix &middot; MTP module internals</p>
+    <h2 class="reveal r2">Inside an MTP module: five steps</h2>
+    <ul class="bullet-list bullet-list--lg reveal r2">
+      <li class="reveal r2"><strong>Gather two inputs</strong> — the previous depth's hidden state (what the model already concluded) + the embedding of the token one step ahead; RMSNorm + concatenate <strong>&rarr;</strong> Eq. 21: <code>h′_i^k = M_k [ RMSNorm(h_i^{k&minus;1}) ; RMSNorm(Emb(t_{i+k})) ]</code></li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Refine</strong> — a Transformer block mixes them into a deeper representation <strong>&rarr;</strong> Eq. 22: <code>h_{1:T&minus;k}^k = TRM_k( h′_{1:T&minus;k}^k )</code></li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Read out</strong> — the <strong>shared</strong> output head (same one the main model uses) turns it into next-token probabilities <strong>&rarr;</strong> Eq. 23: <code>P_{i+k+1}^k = OutHead( h_i^k )</code></li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Score</strong> — cross-entropy against the true token, per depth <strong>&rarr;</strong> Eq. 24: <code>&#8465;<sub>MTP</sub>^k = CrossEntropy( P_{2+k:T+1}^k , t_{2+k:T+1} )</code></li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Combine</strong> — average across depths, scale by <strong>&lambda;</strong>, add to the main loss <strong>&rarr;</strong> Eq. 25: <code>&#8465;<sub>MTP</sub> = (&lambda;/D) &Sigma;_{k=1}^{D} &#8465;<sub>MTP</sub>^k</code></li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>EAGLE similarity:</strong> Causal-chain principle matches EAGLE (Li et al., 2024b), but EAGLE optimizes for speculative decoding while V3 uses MTP primarily to improve training.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; &sect;2.2 &middot; Fig. 3</p>
+</section>
+
+<!-- APPENDIX A6 — SPECULATIVE DECODING THROUGHPUT PARADOX -->
+<section class="slide appendix" id="slide-40" aria-label="Appendix: Why speculative decoding is faster">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goToId('slide-31')">&larr; Back to Speculative decoding</button></p>
+    <p class="eyebrow reveal">Appendix &middot; Why speculative decoding is faster</p>
+    <h2 class="reveal r2">The throughput paradox: more FLOPs, yet faster</h2>
+    <ul class="bullet-list reveal r2">
+      <li class="reveal r2"><strong>Autoregressive decoding is memory-bandwidth-bound, not compute-bound.</strong> At low batch sizes (interactive inference), each step streams the full model weights from HBM, then emits a single token. Matrix units idle waiting for weight data &mdash; the bottleneck is memory bandwidth, not FLOPs.</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Verifying K candidates costs ≈ the same wall-clock as emitting 1.</strong> In speculative decoding, a draft proposes K candidates, and the main model verifies all K in <strong>one parallel forward pass</strong>. The weight-load dominates; extra FLOPs for K tokens ride on otherwise-idle compute &mdash; nearly free.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Rejection doesn't break correctness.</strong> When the main model rejects a draft token, it falls back to generating its own token &mdash; output is identical to plain decoding. Rejected drafts waste FLOPs but never compromise correctness.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Resolution of the paradox:</strong> Strictly more total FLOPs, yet throughput rises when acceptance is high. The key is converting <strong>K sequential memory-bound steps into 1 parallel step</strong> &mdash; the memory-bound latency is what mattered, not the FLOP count. V3's MTP achieves 85&ndash;90% acceptance, yielding ~1.8&times; TPS.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>General lesson:</strong> When memory-bandwidth-bound, adding FLOPs that execute in parallel with weight-load can be nearly free. Speculative decoding exploits this by batching verification work into idle compute time. The craft is designing a cheap draft whose proposals align with the main model &mdash; hence MTP's causal-chain-preserving design.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; &sect;5.4.3 &middot; NVIDIA Blog &middot; LLM inference bottlenecks literature</p>
+</section>
+
 <!-- SLIDE 33 — SECTION 5 TITLE: DUALPIPE -->
 <section class="slide" id="slide-33">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">DeepSeek-V3 Deep Dive &middot; Section 5 of 5</p>
     <h1 class="reveal r2">DualPipe</h1>
     <p class="subtitle reveal r3">Bidirectional pipeline scheduling that hides communication behind computation &mdash; the piece that keeps a cross-node 671B MoE from being communication-bound.</p>
 
     <div class="stat-row reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
-      <div class="stat"><div class="stat-num">~1:1</div><div class="stat-label" style="color: var(--dark-muted);">compute:comm ratio without DualPipe</div></div>
-      <div class="stat"><div class="stat-num">PP/2&minus;1</div><div class="stat-label" style="color: var(--dark-muted);">bubble factor vs PP&minus;1 in 1F1B</div></div>
-      <div class="stat"><div class="stat-num">20 SMs</div><div class="stat-label" style="color: var(--dark-muted);">fully saturate IB &amp; NVLink</div></div>
+      <div class="stat"><div class="stat-num">~1:1</div><div class="stat-label">compute:comm ratio without DualPipe</div></div>
+      <div class="stat"><div class="stat-num">PP/2&minus;1</div><div class="stat-label">bubble factor vs PP&minus;1 in 1F1B</div></div>
+      <div class="stat"><div class="stat-num">20 SMs</div><div class="stat-label">fully saturate IB &amp; NVLink</div></div>
     </div>
   </div>
-  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; &sect;3.2.1</p>
+  <p class="footer-cite">DeepSeek-AI, 2024 &middot; arXiv:2412.19437</p>
 </section>
 
 <!-- SLIDE 34 — BEFORE -->
@@ -1145,7 +1258,7 @@ a { color: inherit; }
     <h2 class="reveal r2">Bidirectional schedule halves the bubble</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r2"><strong>Feed micro-batches from both ends simultaneously</strong> &mdash; two streams enter from opposite directions and meet in the middle, each only traversing half the pipeline before overlapping the other stream's work.</li>
           <li class="reveal r3" style="margin-top: var(--element-gap);">This halves the effective fill/drain depth from <code>(PP&minus;1)</code> to <code>(PP/2&minus;1)</code>.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>The DualPipe bubble formula:</strong> <code>((PP/2) &minus; 1)(F&amp;B + B &minus; 3W)</code> &mdash; where <code>F&amp;B</code> is the time of two mutually overlapped forward and backward chunks. The <code>PP/2&minus;1</code> factor is the key improvement.</li>
@@ -1169,7 +1282,7 @@ a { color: inherit; }
     <h2 class="reveal r2">Hide all-to-all behind computation</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
-        <ul class="bullet-list" style="font-size: var(--body-size);">
+        <ul class="bullet-list">
           <li class="reveal r2"><strong>Split each chunk into four components</strong> &mdash; attention &rarr; all-to-all dispatch &rarr; MLP &rarr; all-to-all combine. In backward, attention and MLP further split into backward-for-input (B) and backward-for-weights (W), à la ZeroBubble.</li>
           <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Manually rearrange components</strong> so one micro-batch's compute overlaps another's all-to-all communication.</li>
           <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>The mechanism: GPU SM-ratio tuning</strong> &mdash; dedicate a small fixed set (<strong>20 SMs</strong>) to run the all-to-all and PP comm kernels <em>concurrently</em> with the rest doing attention/MLP compute. Tune the partition so comm finishes within the compute window.</li>
@@ -1188,18 +1301,18 @@ a { color: inherit; }
 <!-- SLIDE 37 — FIX 3: B/W SPLIT + TRADE-OFF -->
 <section class="slide" id="slide-37" aria-label="The DeepSeek-V3 fix, part 3">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 3/3</p>
     <h2 class="reveal r2">ZeroBubble-style backward split + memory trade-off</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
+    <ul class="bullet-list reveal r2">
       <li class="reveal r2"><strong>Why split backward into B and W</strong> &mdash; a normal backward computes input-gradients and weight-gradients together. But the <strong>input-gradient part (B)</strong> is what propagates downstream to earlier stages (on the critical path), while the <strong>weight-gradient part (W)</strong> only updates local parameters (no downstream dependency, can be deferred). Splitting moves W off the critical path, shrinking the bubble &mdash; visible in Table 2 as the <code>&minus;2W</code> (ZB1P) and <code>&minus;3W</code> (DualPipe) terms.</li>
       <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Trade-off:</strong> DualPipe requires <strong>2&times; parameter copies</strong> &mdash; cheap because a large expert-parallelism size means each device only holds a small shard. Activation memory is just <strong>PP+1</strong>.</li>
       <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Efficient all-to-all implementation</strong> &mdash; node-limited routing (&le; 4 nodes/token) caps IB traffic. <strong>Only 20 SMs</strong> (10 channels, warp-specialized) fully saturate both IB and NVLink regardless of scale, leaving the rest for the compute that comms hide behind.</li>
     </ul>
     <div class="stat-row reveal r4" style="margin-top: var(--content-gap);">
-      <div class="stat"><div class="stat-num">2&times;</div><div class="stat-label" style="color: var(--dark-muted);">parameter copies</div></div>
-      <div class="stat"><div class="stat-num">PP+1</div><div class="stat-label" style="color: var(--dark-muted);">activation memory</div></div>
-      <div class="stat"><div class="stat-num">&le;4 nodes</div><div class="stat-label" style="color: var(--dark-muted);">per token routing limit</div></div>
+      <div class="stat"><div class="stat-num">2&times;</div><div class="stat-label">parameter copies</div></div>
+      <div class="stat"><div class="stat-num">PP+1</div><div class="stat-label">activation memory</div></div>
+      <div class="stat"><div class="stat-num">&le;4 nodes</div><div class="stat-label">per token routing limit</div></div>
     </div>
   </div>
   <p class="footer-cite">DualPipe (Pipeline Parallelism + Compute/Comm Overlap)</p>
@@ -1208,57 +1321,20 @@ a { color: inherit; }
 <!-- SLIDE 38 — WHAT IT BUYS US + WHY CARE -->
 <section class="slide" id="slide-38" aria-label="What it buys us">
   <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
+  <div class="slide-content">
     <p class="eyebrow reveal">What it buys us</p>
     <h2 class="reveal r2">Near-zero all-to-all overhead, scalable MoE</h2>
     <div class="stat-row reveal r2" style="margin-top: var(--content-gap);">
-      <div class="stat"><div class="stat-num">~0</div><div class="stat-label" style="color: var(--dark-muted);">all-to-all overhead</div></div>
-      <div class="stat"><div class="stat-num">20 SMs</div><div class="stat-label" style="color: var(--dark-muted);">comm budget, any scale</div></div>
-      <div class="stat"><div class="stat-num">PP/2&minus;1</div><div class="stat-label" style="color: var(--dark-muted);">bubble vs PP&minus;1</div></div>
+      <div class="stat"><div class="stat-num">~0</div><div class="stat-label">all-to-all overhead</div></div>
+      <div class="stat"><div class="stat-num">20 SMs</div><div class="stat-label">comm budget, any scale</div></div>
+      <div class="stat"><div class="stat-num">PP/2&minus;1</div><div class="stat-label">bubble vs PP&minus;1</div></div>
     </div>
-    <ul class="bullet-list reveal r3" style="font-size: var(--body-size); max-width: min(92vw, 1180px); margin-top: var(--content-gap);">
+    <ul class="bullet-list reveal r3" style="font-size: var(--body-size); margin-top: var(--content-gap);">
       <li class="reveal r3"><strong>Turns the MoE's inherent all-to-all tax</strong> (which would otherwise ~double step time) into <strong>hidden latency</strong>. As long as the compute:comm ratio stays constant, you can keep adding fine-grained experts across nodes without communication becoming the bottleneck &mdash; the enabling piece for training a 671B cross-node MoE efficiently.</li>
       <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Why a DS/DE should care:</strong> At scale, the bottleneck migrates from FLOPs to <strong>data movement</strong> (all-to-all, pipeline bubbles). The winning move isn't to reduce communication so much as to <strong>hide it behind computation</strong> via careful scheduling and decomposition. Whenever you build distributed training/serving, ask what's actually idle and whether it can be overlapped rather than eliminated.</li>
     </ul>
   </div>
   <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 5 of 5</p>
-</section>
-
-<!-- APPENDIX A5 — MTP MODULE INTERNALS -->
-<section class="slide appendix" id="slide-39" aria-label="Appendix: MTP module internals">
-  <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
-    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goTo(29)">&larr; Back to Plan one step ahead</button></p>
-    <p class="eyebrow reveal">Appendix &middot; MTP module internals</p>
-    <h2 class="reveal r2">Inside an MTP module: one token's path through five steps</h2>
-    <ul class="bullet-list reveal r2" style="font-size: clamp(0.85rem, 1.7vw, 1.1rem); max-width: min(92vw, 1180px);">
-      <li class="reveal r2"><strong>Gather two inputs</strong> — the previous depth's hidden state (what the model already concluded) + the embedding of the token one step ahead; RMSNorm + concatenate <strong>&rarr;</strong> Eq. 21: <code>h′_i^k = M_k [ RMSNorm(h_i^{k&minus;1}) ; RMSNorm(Emb(t_{i+k})) ]</code></li>
-      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Refine</strong> — a Transformer block mixes them into a deeper representation <strong>&rarr;</strong> Eq. 22: <code>h_{1:T&minus;k}^k = TRM_k( h′_{1:T&minus;k}^k )</code></li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Read out</strong> — the <strong>shared</strong> output head (same one the main model uses) turns it into next-token probabilities <strong>&rarr;</strong> Eq. 23: <code>P_{i+k+1}^k = OutHead( h_i^k )</code></li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Score</strong> — cross-entropy against the true token, per depth <strong>&rarr;</strong> Eq. 24: <code>&#8465;<sub>MTP</sub>^k = CrossEntropy( P_{2+k:T+1}^k , t_{2+k:T+1} )</code></li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Combine</strong> — average across depths, scale by <strong>&lambda;</strong>, add to the main loss <strong>&rarr;</strong> Eq. 25: <code>&#8465;<sub>MTP</sub> = (&lambda;/D) &Sigma;_{k=1}^{D} &#8465;<sub>MTP</sub>^k</code></li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>EAGLE similarity:</strong> Causal-chain principle matches EAGLE (Li et al., 2024b), but EAGLE optimizes for speculative decoding while V3 uses MTP primarily to improve training.</li>
-    </ul>
-  </div>
-  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; &sect;2.2 &middot; Fig. 3</p>
-</section>
-
-<!-- APPENDIX A6 — SPECULATIVE DECODING THROUGHPUT PARADOX -->
-<section class="slide appendix" id="slide-40" aria-label="Appendix: Why speculative decoding is faster">
-  <div class="grid-backdrop"></div>
-  <div class="slide-content wide">
-    <p class="apx-back reveal"><button class="apx-link" onclick="presentation.goTo(31)">&larr; Back to Speculative decoding</button></p>
-    <p class="eyebrow reveal">Appendix &middot; Why speculative decoding is faster</p>
-    <h2 class="reveal r2">The throughput paradox: more FLOPs, yet faster</h2>
-    <ul class="bullet-list reveal r2" style="font-size: var(--body-size); max-width: min(92vw, 1180px);">
-      <li class="reveal r2"><strong>Autoregressive decoding is memory-bandwidth-bound, not compute-bound.</strong> At low batch sizes (interactive inference), each step streams the full model weights from HBM, then emits a single token. Matrix units idle waiting for weight data &mdash; the bottleneck is memory bandwidth, not FLOPs.</li>
-      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Verifying K candidates costs ≈ the same wall-clock as emitting 1.</strong> In speculative decoding, a draft proposes K candidates, and the main model verifies all K in <strong>one parallel forward pass</strong>. The weight-load dominates; extra FLOPs for K tokens ride on otherwise-idle compute &mdash; nearly free.</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Rejection doesn't break correctness.</strong> When the main model rejects a draft token, it falls back to generating its own token &mdash; output is identical to plain decoding. Rejected drafts waste FLOPs but never compromise correctness.</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Resolution of the paradox:</strong> Strictly more total FLOPs, yet throughput rises when acceptance is high. The key is converting <strong>K sequential memory-bound steps into 1 parallel step</strong> &mdash; the memory-bound latency is what mattered, not the FLOP count. V3's MTP achieves 85&ndash;90% acceptance, yielding ~1.8&times; TPS.</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>General lesson:</strong> When memory-bandwidth-bound, adding FLOPs that execute in parallel with weight-load can be nearly free. Speculative decoding exploits this by batching verification work into idle compute time. The craft is designing a cheap draft whose proposals align with the main model &mdash; hence MTP's causal-chain-preserving design.</li>
-    </ul>
-  </div>
-  <p class="footer-cite">DeepSeek-V3 Technical Report &middot; &sect;5.4.3 &middot; NVIDIA Blog &middot; LLM inference bottlenecks literature</p>
 </section>
 
 </main>
@@ -1277,8 +1353,6 @@ class Presentation {
     this.buildDots();
     this.updateProgress();
     this.bindKeys();
-    this.bindWheel();
-    this.bindTouch();
     this.observeSlideChange();
     this.observeReveal();
   }
@@ -1313,6 +1387,11 @@ class Presentation {
     this.slides[idx].scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  goToId(id) {
+    const target = document.getElementById(id);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   bindKeys() {
     window.addEventListener('keydown', e => {
       if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) {
@@ -1329,27 +1408,6 @@ class Presentation {
         this.goTo(this.slides.length - 1);
       }
     });
-  }
-
-  bindWheel() {
-    let locked = false;
-    window.addEventListener('wheel', e => {
-      if (locked || Math.abs(e.deltaY) < 24) return;
-      locked = true;
-      this.goTo(this.current + (e.deltaY > 0 ? 1 : -1));
-      setTimeout(() => { locked = false; }, 700);
-    }, { passive: true });
-  }
-
-  bindTouch() {
-    let startY = null;
-    window.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
-    window.addEventListener('touchend', e => {
-      if (startY === null) return;
-      const dy = startY - e.changedTouches[0].clientY;
-      if (Math.abs(dy) > 50) this.goTo(this.current + (dy > 0 ? 1 : -1));
-      startY = null;
-    }, { passive: true });
   }
 
   observeSlideChange() {
@@ -1374,7 +1432,7 @@ class Presentation {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => new Presentation());
+document.addEventListener('DOMContentLoaded', () => { window.presentation = new Presentation(); });
 </script>
 </body>
 </html>

@@ -18,6 +18,12 @@ This workspace generates self-contained `.html` presentation decks from markdown
 
 **Style presets:** `.claude/skills/frontend-slides/STYLE_PRESETS.md` lists the built-in visual styles.
 
+### This repo's base CSS overrides the vendored skill's
+
+Use **`templates/deck-base.css`** in place of the vendored skill's own "Mandatory Base CSS" block (`STYLE_PRESETS.md` / `viewport-base.css`) in every generated `presentation.html`. It's the same viewport-fitting contract, with fixes for defects the vendored block still reproduces: `scroll-snap-type` declared on the wrong element (`html` instead of the actual scroll container, so the deck rests between slides instead of snapping), and a heading font-size cap reached at a wider viewport (1600px) than where `.slide-content`'s own `max-width: 1440px` cap engages (1440px) — so a headline that fits at 1280px wraps again at 1920px because the font keeps growing after its container stops. Theme on top of it freely; don't edit the rules themselves.
+
+The full house-style rule set for decks — this base-CSS rule plus seven more (one content measure, one size per heading level, ≤8-word headlines, unbreakable display numbers, `min-height:0` on constrained flex/grid children, no redundant inline styles, run the checker before handoff) — lives in **`.claude/skills/deck-writing/SKILL.md`**, the deck-side counterpart to `summary-writing/SKILL.md`. Apply it every generation and edit.
+
 ### Style selection
 
 This repo's default style is **Swiss Modern** (preset #11: Archivo + Nunito, white/black/signal-red, "minimal, precise, data-forward") — established by the first deck generated, `decks/2024-12_deepseekai_deepseek-v3__fp8-pilot/`.
@@ -45,25 +51,55 @@ The skill's own QA guidance (in `SKILL.md`) covers content, structure, and visua
 ```bash
 cd scripts && npm install   # once, installs puppeteer-core
 node qa-screenshot.js ../decks/<slug>__<deck-name>/presentation.html
+# or, for a fast pass/fail with no PNGs written (skips the screenshot wait,
+# forces .reveal elements to their settled state instead):
+node qa-screenshot.js ../decks/<slug>__<deck-name>/presentation.html --check-only
 ```
 
-Renders every `.slide` at all five of the skill's required breakpoints (1920×1080, 1280×720, 768×1024, 375×667, 667×375), screenshots each into `decks/<slug>__<deck-name>/qa-screenshots/` (or a custom output dir as a second argument), and flags any slide whose content is taller than its viewport box (`scrollHeight > clientHeight`) — the single most common defect per the skill's own checklist. Exits non-zero if it finds one.
+Renders every `.slide` at all five of the skill's required breakpoints (1920×1080, 1280×720, 768×1024, 375×667, 667×375) and screenshots each into `decks/<slug>__<deck-name>/qa-screenshots/` (or a custom output dir as a second argument, before `--check-only` if both are passed). On top of the screenshots, it runs six checks and exits non-zero if any fail (see `.claude/skills/deck-writing/SKILL.md` for the house rule each one enforces):
 
-**How it works, and why not `chrome --headless --screenshot`:** that CLI flag takes one screenshot immediately after the page's `load` event, with no way to wait for anything after — so a deck using `scroll-behavior: smooth` or staggered `.reveal` animations (both of which `frontend-slides` decks use) gets captured mid-scroll or mid-fade, producing screenshots that look broken even when the deck isn't. `puppeteer-core` drives Chrome over the DevTools Protocol instead of the CLI, which means the script can run real JS in the page (`page.evaluate` — jump straight to a slide via `scrollIntoView`), wait on an actual timer for animations to settle, *then* screenshot — each shot reflects the deck at rest, the same state a person would see. It's `puppeteer-core` rather than plain `puppeteer` specifically to skip puppeteer's ~300MB bundled Chromium download: `-core` ships only the automation client and drives whatever Chrome is already installed (`executablePath` in `qa-screenshot.js` — auto-detects the standard macOS/Linux/Windows install paths, or set `PUPPETEER_EXECUTABLE_PATH` to override).
+| Check | What it catches |
+|---|---|
+| outer overflow | `scrollHeight > clientHeight` on the `.slide` itself — the original, single most common defect per the skill's own checklist |
+| **A: escape** | a content element's rendered box extends past its `.slide`'s box — catches content clipped by `overflow:hidden` that the outer-overflow check can't see, because the `.slide` box itself never grows even though a descendant (e.g. a grid column whose child lacks `min-height:0`) does (R6) |
+| **B: chrome overlap** | a content element visually intersects `.footer-cite`, `.nav-dots`, `.progress-index`, or `.keyboard-hint` (R6) |
+| **C: left-edge drift** | `.slide-content`'s content-box left edge isn't uniform across slides at a given breakpoint — the pixel measurement that originally diagnosed a per-slide width band shrink-wrapping instead of stretching (R2) |
+| **D: heading/stat wrap** | an `h1`, `h2`, or `.stat-num`-classed element renders on more than one line — hard-fails at the two desktop breakpoints, informational only at tablet/mobile where wrapping is legitimate (R3, R5) |
+| **E: headline length** | an `h1`/`h2` exceeds 8 words (R4) |
 
-This check only catches vertical overflow. It will not catch overlapping elements, uneven spacing, low contrast, or horizontal collisions (e.g. two side-by-side elements crowding into each other without either one overflowing its own box) — those still need eyes on the images.
+Findings print grouped by breakpoint (capped per-breakpoint, not globally, so a busy breakpoint can't silently push a different one's findings past a truncation cutoff unnoticed).
+
+**How it works, and why not `chrome --headless --screenshot`:** that CLI flag takes one screenshot immediately after the page's `load` event, with no way to wait for anything after — so a deck using `scroll-behavior: smooth` or staggered `.reveal` animations (both of which `frontend-slides` decks use) gets captured mid-scroll or mid-fade, producing screenshots that look broken even when the deck isn't. `puppeteer-core` drives Chrome over the DevTools Protocol instead of the CLI, which means the script can run real JS in the page (`page.evaluate` — jump straight to a slide via `scrollIntoView`), wait on an actual timer for animations to settle, *then* measure/screenshot — each shot and measurement reflects the deck at rest, the same state a person would see. It's `puppeteer-core` rather than plain `puppeteer` specifically to skip puppeteer's ~300MB bundled Chromium download: `-core` ships only the automation client and drives whatever Chrome is already installed (`executablePath` in `qa-screenshot.js` — auto-detects the standard macOS/Linux/Windows install paths, or set `PUPPETEER_EXECUTABLE_PATH` to override).
+
+These checks still can't catch everything — overlap/escape detection (A/B) is heuristic (leaf DOM elements only, so a bug expressed purely through a non-leaf container's box could slip through), and nothing here checks contrast, figure quality, or genuine interaction. Eyes on the images are still required.
 
 ### Manual
 
 Look at every screenshot the script produces (or open `presentation.html` directly in a browser) and check:
-- No text overflow or clipping (should already be caught above, but verify).
-- Overlapping elements, or elements crowding each other (< 0.3" / ~24px gaps).
+- No text overflow or clipping, or overlapping/crowding elements (should already be caught above, but verify — especially anything the checker can't see, like a bug expressed only through a container's own box).
 - Figures load correctly from `assets/` and aren't stretched or low-contrast.
-- Consistent spacing and alignment slide-to-slide.
-- Keyboard, wheel/trackpad, and touch navigation all work (open the file directly for this — screenshots can't verify interaction).
+- Consistent spacing and alignment slide-to-slide, and general contrast/legibility.
+- Keyboard, wheel/trackpad, and touch navigation all work, and **scroll-snap actually lands on a slide rather than resting between two** — open the file directly for this, screenshots can't verify interaction.
 
-`scripts/export-pdf.sh` (from the vendored skill) is also available if a PDF snapshot is wanted instead of PNGs.
+`scripts/export-pdf.sh` (from the vendored skill) needs Playwright, which this repo doesn't install (it standardized on `puppeteer-core` instead — see below and the "How it works" note above). Use `scripts/export-pptx.py` for a PDF-adjacent snapshot; it needs no extra dependency.
 
-## Retired: PPTX workflow
+## Export to PPTX
 
-This workspace previously generated `.pptx` decks via the Anthropic `pptx` Agent Skill. That workflow has been retired in favor of HTML decks; see git history for the prior `docs/ppt-tooling.md` if the old approach is ever needed again.
+```bash
+.venv/bin/python scripts/export-pptx.py decks/<slug>__<deck-name>/presentation.html
+# writes presentation.pptx beside the html
+```
+
+Two-stage pipeline: `scripts/render-deck.js` (a `puppeteer-core` sibling of `qa-screenshot.js`, sharing its Chrome-detection via `scripts/lib/find-chrome.js`) screenshots every `.slide` at 1920×1080 in DOM order with `.keyboard-hint`/`.nav-dots`/`.progress-index` hidden (meaningless once slides leave the browser — `.footer-cite` stays); `scripts/export-pptx.py` then assembles those PNGs into a 16:9 `.pptx` via `python-pptx` (already in `.venv`), one full-bleed picture per slide.
+
+**Fidelity is image-per-slide, not native text.** Pixel-identical to the browser — every layout, color, figure, and grid survives — but slide text isn't selectable/editable in PowerPoint. Rebuilding native text boxes was considered and rejected: it's a second renderer to maintain, and Swiss Modern's asymmetric grid layouts wouldn't survive a text-box reflow.
+
+Options: `--jpeg` re-encodes each slide as JPEG (quality 88) before embedding to shrink the file — worthwhile on decks with large photographic figures, but on a mostly-flat-color/white deck like this one PNG already compresses well and the saving is closer to ~10% than a dramatic cut. `--keep-pngs DIR` renders into `DIR` instead of a temp dir if the intermediate frames are also wanted.
+
+Two caveats inherent to any static, browser-rendered export, not fixed by this tooling:
+- Any `assets/*.gif` flattens to whichever frame is showing after the render's settle wait.
+- The deck's Google Fonts (`fonts.googleapis.com`) need network access at export time; offline, Chrome silently substitutes a fallback font and the export won't match what a live-network browser shows.
+
+## Retired: PPTX workflow (pre-HTML-deck era)
+
+This workspace previously generated `.pptx` decks directly via the Anthropic `pptx` Agent Skill, before the pipeline moved to HTML decks as the primary artifact. That generation path is retired — see git history for the prior `docs/ppt-tooling.md` if it's ever needed again. The `.pptx` *export* above is unrelated: it's a rendering of an HTML deck, not an alternative source format.

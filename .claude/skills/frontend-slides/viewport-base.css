@@ -2,6 +2,12 @@
    VIEWPORT FITTING: MANDATORY BASE STYLES
    Include this ENTIRE file in every presentation.
    These styles ensure slides fit exactly in the viewport.
+
+   THIS REPO USES templates/deck-base.css INSTEAD OF THIS FILE. Same
+   contract, with fixes for defects this file still has (scroll-snap on
+   html instead of the real scroll container; a heading font-size cap
+   reached at a wider viewport than the content container's own max-width
+   cap) — see docs/html-tooling.md and .claude/skills/deck-writing/SKILL.md.
    =========================================== */
 
 /* 1. Lock html/body to viewport */
