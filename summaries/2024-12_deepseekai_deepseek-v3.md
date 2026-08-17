@@ -391,55 +391,62 @@
 
 ## 5. DualPipe (Pipeline Parallelism + Compute/Comm Overlap)
 
-- **TL;DR** — A bidirectional pipeline schedule that feeds micro-batches from both ends and finely interleaves compute with the MoE all-to-all, hiding nearly all cross-node communication and roughly halving the pipeline bubble — the piece that keeps a cross-node 671B MoE from being communication-bound. [src: §3.2.1]
+- **TL;DR** — Every GPU is given work from two directions through the pipeline at once, so it's never left waiting on either the previous stage or the network — this hides the MoE's cross-node communication behind computation almost entirely, at the cost of holding two copies of the model's parameters. [src: §3.2.1]
 
 
 
 ### Before — prior SOTA & why it hurt
 
-- Prior pipeline schedules and their bubble sizes
-  - **GPipe:** large fill/drain bubble [ref-only]
-  - **1F1B:** standard baseline, bubble = `(PP−1)(F+B)` [src: Table 2]
-  - **ZB1P / Zero-Bubble:** splits backward into "backward-for-input" B and "backward-for-weights" W to shrink the bubble, bubble = `(PP−1)(F+B−2W)` [src: §3.2.1, Table 2]
-  - Bubble grows with pipeline depth PP — deeper pipelines waste more compute idling at fill/drain [ref-only]
-- The MoE-specific challenge: cross-node **expert parallelism**
-  - Needs an **all-to-all dispatch** (route tokens to experts on other nodes) and **all-to-all combine** (gather results back) per MoE layer [src: §3.2.1]
-  - Over InfiniBand this is expensive — the naïve **compute:communication ratio is ~1:1**, i.e. up to *half* the step time could be lost to communication [src: §3.2.1]
-  - Fine-grained experts spread across nodes make it worse
-  - Communication threatens to become the ceiling on how far MoE can scale
+- **What a pipeline bubble physically is**
+  - Splitting the model across `PP` GPUs (one slab of layers each) means the last GPU can't start until the first micro-batch has passed through every earlier stage, and the first GPU sits idle at the very end waiting for the last micro-batch to finish draining
+  - Concretely, at `PP=16` (DeepSeek-V3's setting [src: §3.2]), a stage can idle for roughly 15 stage-times filling the pipeline at the start of a step and another ~15 draining it at the end — time spent doing nothing, not computing
+  - Prior schedules and how big their bubble is
+    - **GPipe:** fills, then drains — the largest bubble [ref-only]
+    - **1F1B:** standard baseline, bubble = `(PP−1)(F+B)` [src: Table 2]
+    - **ZB1P / Zero-Bubble:** splits backward into "backward-for-input" B and "backward-for-weights" W to shrink the bubble, bubble = `(PP−1)(F+B−2W)` [src: §3.2.1, Table 2]
+  - Bubble grows with pipeline depth `PP` — deeper pipelines waste more compute idling at fill/drain [ref-only]
+- **What the MoE all-to-all physically moves, and why it adds a second tax on top of the bubble**
+  - Cross-node **expert parallelism** spreads the model's experts across GPUs on different nodes, so each token's hidden vector has to be shipped over the network to whichever node holds the expert it was routed to (**all-to-all dispatch**), and the expert's output shipped back (**all-to-all combine**) — once per MoE layer [src: §3.2.1]
+  - Over InfiniBand this transfer is expensive: the naïve **compute:communication ratio is ~1:1** [src: §3.2.1], meaning the network transfer takes roughly as long as the compute it feeds — so a schedule that does them serially (compute, then wait for network, then compute) can lose up to **half the step time to waiting**
+  - Fine-grained experts spread across more nodes make this worse, since more of them are reached over the network
+  - Communication, not FLOPs, threatens to become the ceiling on how far MoE can scale
 
 
 
 ### The DeepSeek-V3 fix
 
-- **Bidirectional schedule** [src: §3.2.1]
-  - Feed micro-batches from **both ends of the pipeline simultaneously**, so one direction's forward overlaps the other's backward — two streams enter from both ends and meet in the middle, each only traversing half the pipeline before overlapping the other stream's work. This halves the effective fill/drain depth from `(PP−1)` to `(PP/2−1)`. [src: §3.2.1]
-  - The DualPipe bubble formula reflects this: `((PP/2) − 1)(F&B + B − 3W)` [src: Table 2] — where `F&B` denotes the time of two mutually overlapped forward and backward chunks. The `PP/2−1` factor (vs `PP−1` in 1F1B) is the key — roughly half the bubble-inducing stage count. [viz: Figure 5 — bidirectional DualPipe schedule: 8 PP ranks × 20 micro-batches in two directions; cells sharing a black border have mutually overlapped compute & communication]
-  - Enables both all-to-all *and* pipeline (PP) communication to be **fully hidden** [src: §3.2.1]
-- **Fine-grained chunk decomposition for overlap**
-  - Each chunk is split into **attention → all-to-all dispatch → MLP → all-to-all combine** [src: §3.2.1]
-  - In backward, attention and MLP are further split into backward-for-input / backward-for-weights (à la Zero-Bubble) — the "why" below [src: §3.2.1]
-  - These pieces are **manually rearranged** so one micro-batch's compute overlaps another's all-to-all communication. The mechanism: a GPU's streaming multiprocessors (SMs) normally all run compute. By dedicating a **small fixed set (20 SMs, §3.2.2)** to run the all-to-all and PP comm kernels *concurrently* with the rest doing attention/MLP compute, comm runs in parallel with (not serially before/after) computation. The SM partition is tuned so the comm kernel finishes within the compute window → comm is fully hidden, costing zero extra step time. [src: §3.2.1 (Figure 4); §3.2.2] [viz: Figure 4 — intra-chunk compute-comm overlap strategy: chunk split into attention / all-to-all dispatch / MLP / all-to-all combine (+ backward B/W split) + PP comm, both all-to-all and PP comm fully hidden (color-coded)]
-  - Why split backward into B and W (ZeroBubble): a normal backward computes input-gradients and weight-gradients together as one chunk. But the input-gradient part (**B**) is what propagates downstream to earlier stages (on the critical path), while the weight-gradient part (**W**) only updates local parameters (no downstream dependency, can be deferred). Splitting moves W off the critical path, shrinking the bubble — visible in Table 2 as the `−2W` (ZB1P) and `−3W` (DualPipe) terms. [src: §3.2.1, Table 2]
-- **Bubble vs memory trade-off**
-  - DualPipe bubble ≈ `(PP/2 − 1)(F&B + B − 3W)` [src: Table 2]
-  - The `PP/2−1` factor (vs `PP−1`) roughly **halves** the bubble-inducing stage count [src: Table 2]
-  - Cost: **2× parameter copies** — cheap because a large expert-parallelism size means each device only holds a small shard — and activation memory of just PP+1 [src: §3.2.1, Table 2]
-- **Efficient all-to-all implementation** so the overlap actually works
-  - **Node-limited routing** (≤ 4 nodes/token) caps IB traffic [src: §3.2.2]
-  - **Bandwidth-matched routing:** NVLink ≈ 160 GB/s ≈ 3.2× IB's 50 GB/s → ~3.2 experts/node reached over NVLink, so IB and NVLink transfers pipeline into each other [src: §3.2.2] [ref-only]
-  - **Minimal SM budget:** only **20 SMs** (10 channels, warp-specialized across dispatch/combine phases) fully saturate both IB and NVLink, leaving the rest of the GPU for the compute the comms hide behind [src: §3.2.2]
+- **Mechanism 1 — every GPU holds two pipeline stages, one per direction** [src: §3.2.1]
+  - Micro-batches are fed in from **both ends of the pipeline at once**: one stream flows left-to-right, a second flows right-to-left, so each GPU is assigned one stage from each stream [src: §3.2.1]
+  - Every micro-batch still crosses **all `PP` stages** — nothing about its path is shortened. What changes is that whenever the left-to-right stream would leave a GPU idle (because its next left-to-right input hasn't arrived yet), the right-to-left stream already has work queued for that same GPU, so it's rarely idle from either direction at once. This roughly halves the effective fill/drain depth from `(PP−1)` to `(PP/2−1)` [src: §3.2.1]
+  - The direct cost of this trick: since each GPU now runs a stage from *two* directions, it must hold **two copies of that stage's parameters** [src: Table 2] — the 2× parameter-memory cost is the price of the two-direction trick, not a separate, unrelated tax
+  - Enables both all-to-all *and* pipeline (PP) communication to be **fully hidden** [src: §3.2.1] [viz: Figure 5 — bidirectional DualPipe schedule: 8 PP ranks × 20 micro-batches in two directions; cells sharing a black border have mutually overlapped compute & communication]
+- **Mechanism 2 — network transfers and matmuls run on the same GPU at the same instant, on different cores**
+  - A modern GPU's compute is done by many independent **streaming multiprocessors (SMs)** — tens to over a hundred per chip — and different SMs can be assigned to different, unrelated work at the same time [ref-only]
+  - Each chunk of work is split into **attention → all-to-all dispatch → MLP → all-to-all combine**; in backward, attention and MLP are further split into backward-for-input / backward-for-weights (à la Zero-Bubble) — the "why" is in Mechanism 3 below [src: §3.2.1]
+  - These pieces are **manually rearranged** so that a fixed, small set of SMs (**20 SMs**, tuned in §3.2.2) runs the all-to-all/PP-communication kernels for one micro-batch, while the remaining SMs simultaneously run attention/MLP compute for a *different* micro-batch [src: §3.2.1 (Figure 4); §3.2.2]. This is legal because the two pieces of work touch disjoint data — the comm kernel doesn't need the other micro-batch's matmul output, so nothing forces them to run one after the other. The 20-SM partition is tuned so the comm kernel finishes within the compute window it's hidden behind → comm costs zero extra step time [src: §3.2.1; §3.2.2] [viz: Figure 4 — intra-chunk compute-comm overlap strategy: chunk split into attention / all-to-all dispatch / MLP / all-to-all combine (+ backward B/W split) + PP comm, both all-to-all and PP comm fully hidden (color-coded)]
+- **Mechanism 3 — splitting backward into urgent (B) and deferrable (W) work**
+  - A normal backward pass computes input-gradients and weight-gradients together as one chunk. But the input-gradient part (**B**) is what propagates downstream to earlier pipeline stages (on the critical path — those stages can't proceed without it), while the weight-gradient part (**W**) only updates that stage's own local parameters, with no downstream dependency, so it can be deferred
+  - Deferring W moves it off the critical path, shrinking the bubble further — visible in the bubble formulas as the `−2W` (ZB1P) and `−3W` (DualPipe) terms [src: §3.2.1, Table 2]
+- **What makes the overlap window actually fit** — the network transfer only stays hidden if it reliably finishes inside the compute window, which takes its own co-design
+  - **Node-limited routing** (≤ 4 nodes/token) caps how much traffic has to cross the slower InfiniBand link at all [src: §3.2.2]
+  - **Bandwidth-matched routing:** NVLink ≈ 160 GB/s ≈ 3.2× IB's 50 GB/s → ~3.2 experts/node reached over NVLink, so IB and NVLink transfers pipeline into each other rather than one link sitting idle waiting on the other [src: §3.2.2] [ref-only]
+  - **Minimal SM budget:** only **20 SMs** (10 channels, warp-specialized across dispatch/combine phases) are enough to fully saturate both IB and NVLink, leaving the rest of the GPU's SMs for the compute the comms hide behind [src: §3.2.2]
+- **The formulas, now that the terms mean something**
+  - `1F1B`: bubble `(PP−1)(F+B)` [src: Table 2]
+  - `ZB1P`: bubble `(PP−1)(F+B−2W)` [src: Table 2]
+  - `DualPipe`: bubble `((PP/2)−1)(F&B+B−3W)`, where `F&B` is the time of two mutually overlapped forward and backward chunks — the `PP/2−1` factor (vs `PP−1`) is the two-direction trick from Mechanism 1; the `−3W` is Mechanism 3's deferred weight-gradients [src: Table 2]
+  - Memory: DualPipe costs **2× parameter copies** (Mechanism 1) — affordable because a large expert-parallelism size already means each device only holds a small shard of the model — and **PP+1** activation memory (vs `PP` for 1F1B/ZB1P) [src: §3.2.1, Table 2]
 
 
 
 ### What it buys us
 
 - **Quantitative**
+  - Cuts the naïve ~1:1 compute:communication ratio (up to ~50% of step time exposed to waiting, see Before) down to **near-zero all-to-all communication overhead** [src: §3.2.1]
   - Halves the bubble stage-count factor (`PP/2−1` vs `PP−1`) [src: Table 2]
-  - Achieves **near-zero all-to-all communication overhead** [src: §3.2.1]
-  - Only **20 SMs** needed for communication regardless of scale, so comms don't eat throughput [src: §3.2.2]
+  - Only **20 SMs** — a small, fixed slice of the GPU — are needed for communication regardless of scale, so comms don't eat into the throughput the rest of the SMs deliver [src: §3.2.2]
 - **Qualitative**
-  - Turns the MoE's inherent all-to-all tax (which would otherwise ~double step time) into **hidden latency** [src: §3.2.1]
+  - Turns the MoE's inherent all-to-all tax (which would otherwise expose up to ~half the step time as waiting) into **hidden latency** — work the GPU was going to spend on something anyway
   - As long as the compute:comm ratio stays constant, you can keep adding **fine-grained experts across nodes** without communication becoming the bottleneck — the enabling piece for training a 671B cross-node MoE efficiently [src: §1, §3.2.1]
 
 
@@ -448,6 +455,7 @@
 
 - At scale, the bottleneck migrates from FLOPs to **data movement** (all-to-all, pipeline bubbles)
 - The winning move isn't to reduce communication so much as to **hide it behind computation** via careful scheduling and decomposition
+  - Concretely: give every device work from a second, independent stream whenever its primary stream would leave it idle, and dedicate a small fixed slice of compute to the network transfer that stream's work depends on
   - And to co-design the routing (node limits, bandwidth matching) so the comms *fit* in the overlap window
 - Whenever you build distributed training/serving, ask what's actually idle and whether it can be overlapped rather than eliminated
 
