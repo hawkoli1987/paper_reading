@@ -90,7 +90,9 @@ Look at every screenshot the script produces (or open `presentation.html` direct
 # writes presentation.pptx beside the html
 ```
 
-Two-stage pipeline: `scripts/render-deck.js` (a `puppeteer-core` sibling of `qa-screenshot.js`, sharing its Chrome-detection via `scripts/lib/find-chrome.js`) screenshots every `.slide` at 1920×1080 in DOM order with `.keyboard-hint`/`.nav-dots`/`.progress-index` hidden (meaningless once slides leave the browser — `.footer-cite` stays); `scripts/export-pptx.py` then assembles those PNGs into a 16:9 `.pptx` via `python-pptx` (already in `.venv`), one full-bleed picture per slide.
+Two-stage pipeline: `scripts/render-deck.js` (a `puppeteer-core` sibling of `qa-screenshot.js`, sharing its Chrome-detection via `scripts/lib/find-chrome.js`) screenshots every `.slide` at 1440×810 in DOM order with `.keyboard-hint`/`.nav-dots`/`.progress-index` hidden (meaningless once slides leave the browser — `.footer-cite` stays); `scripts/export-pptx.py` then assembles those PNGs into a 16:9 `.pptx` via `python-pptx` (already in `.venv`), one full-bleed picture per slide.
+
+**Renders at 1440×810, not 1920×1080.** Decks cap `.slide-content` at `max-width: 1440px` (`templates/deck-base.css`); rendering wider than that leaves the cap's slack as dead space on the right of every slide once it's stretched to fill a 16:9 pptx slide. 1440×810 keeps 16:9 while landing exactly on that cap, so content fills the frame. Override with `render-deck.js`'s own `--viewport WxH` flag if a deck's content intentionally doesn't fill 1440 (e.g. a centered title card) — `export-pptx.py` doesn't currently expose this flag itself.
 
 **Fidelity is image-per-slide, not native text.** Pixel-identical to the browser — every layout, color, figure, and grid survives — but slide text isn't selectable/editable in PowerPoint. Rebuilding native text boxes was considered and rejected: it's a second renderer to maintain, and Swiss Modern's asymmetric grid layouts wouldn't survive a text-box reflow.
 

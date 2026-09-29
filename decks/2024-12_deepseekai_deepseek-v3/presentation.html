@@ -1210,59 +1210,74 @@ a { color: inherit; }
 </section>
 
 <!-- SLIDE 33 — SECTION 5 TITLE: DUALPIPE -->
-<section class="slide" id="slide-33">
+<section class="slide" id="slide-33" aria-label="DualPipe section title">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">DeepSeek-V3 Deep Dive &middot; Section 5 of 5</p>
     <h1 class="reveal r2">DualPipe</h1>
-    <p class="subtitle reveal r3">Bidirectional pipeline scheduling that hides communication behind computation &mdash; the piece that keeps a cross-node 671B MoE from being communication-bound.</p>
+    <p class="subtitle reveal r3">Every GPU gets work from two directions through the pipeline at once, so network transfers hide behind computation instead of stalling it &mdash; the piece that keeps a cross-node 671B MoE from being communication-bound.</p>
 
     <div class="stat-row reveal r4" style="margin-top: clamp(1.5rem, 4vh, 3rem);">
-      <div class="stat"><div class="stat-num">~1:1</div><div class="stat-label">compute:comm ratio without DualPipe</div></div>
-      <div class="stat"><div class="stat-num">PP/2&minus;1</div><div class="stat-label">bubble factor vs PP&minus;1 in 1F1B</div></div>
-      <div class="stat"><div class="stat-num">20 SMs</div><div class="stat-label">fully saturate IB &amp; NVLink</div></div>
+      <div class="stat"><div class="stat-num">~1:1</div><div class="stat-label">compute:network ratio, before</div></div>
+      <div class="stat"><div class="stat-num">~0</div><div class="stat-label">network overhead, after</div></div>
+      <div class="stat"><div class="stat-num">2&times;</div><div class="stat-label">GPU memory cost of the fix</div></div>
     </div>
   </div>
   <p class="footer-cite">DeepSeek-AI, 2024 &middot; arXiv:2412.19437</p>
 </section>
 
-<!-- SLIDE 34 — BEFORE -->
-<section class="slide" id="slide-34" aria-label="Before">
+<!-- SLIDE 42 — BEFORE, PART 1: WHAT A BUBBLE IS -->
+<section class="slide" id="slide-42" aria-label="What a pipeline bubble is">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
-    <p class="eyebrow reveal">Before</p>
-    <h2 class="reveal r2">Pipeline bubbles and cross-node communication tax</h2>
+    <p class="eyebrow reveal">Before &middot; the first tax</p>
+    <h2 class="reveal r2">What a pipeline bubble is</h2>
     <div class="card-grid">
       <div class="card reveal r2">
-        <h3>Pipeline bubbles waste compute</h3>
-        <p>Prior schedules like <strong>1F1B</strong> have bubble = <code>(PP&minus;1)(F+B)</code> &mdash; the fill/drain phase idles a growing fraction of stages as pipeline depth PP increases. <strong>ZB1P</strong> shrinks it by splitting backward but still scales with PP.</p>
+        <h3>An assembly line of GPUs</h3>
+        <p>Split the model's layers across <strong>PP GPUs</strong>, one slab each. A micro-batch flows through GPU 1 &rarr; 2 &rarr; &hellip; &rarr; PP, like parts moving down a line.</p>
       </div>
       <div class="card reveal r3">
-        <h3>Cross-node expert parallelism adds all-to-all</h3>
-        <p>MoE requires an <strong>all-to-all dispatch</strong> (route tokens to expert nodes) and <strong>all-to-all combine</strong> per layer. Over InfiniBand, the <strong>compute:communication ratio is ~1:1</strong> &mdash; without hiding comm, step time ~doubles.</p>
+        <h3>The idle time nobody sees</h3>
+        <p>GPU 16 can't start until the first micro-batch has cleared 15 earlier stages. GPU 1 idles again at the end, waiting for the last micro-batch to drain out. That idle time is the <strong>bubble</strong>.</p>
       </div>
-      <div class="card reveal r4">
-        <h3>The ceiling</h3>
-        <p>Communication threatens to become the bottleneck on how far fine-grained MoE can scale. FP8 made compute cheap; now the exposed ceiling is data movement.</p>
-      </div>
+    </div>
+    <div class="stat-row reveal r4" style="margin-top: var(--content-gap);">
+      <div class="stat"><div class="stat-num">~15</div><div class="stat-label">stage-times idle filling (PP=16)</div></div>
+      <div class="stat"><div class="stat-num">~15</div><div class="stat-label">stage-times idle draining</div></div>
     </div>
   </div>
   <p class="footer-cite">DualPipe (Pipeline Parallelism + Compute/Comm Overlap)</p>
 </section>
 
-<!-- SLIDE 35 — FIX 1: BIDIRECTIONAL SCHEDULE -->
+<!-- SLIDE 43 — BEFORE, PART 2: THE MOE NETWORK TAX -->
+<section class="slide" id="slide-43" aria-label="Why MoE adds a network tax">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">Before &middot; the second tax</p>
+    <h2 class="reveal r2">Why MoE adds a network tax</h2>
+    <ul class="bullet-list reveal r2">
+      <li class="reveal r2"><strong>Experts live on other nodes.</strong> Cross-node expert parallelism spreads the model's experts across GPUs on different machines. Each token's hidden vector has to travel over the network to whichever node holds the expert it was routed to &mdash; <strong>all-to-all dispatch</strong> &mdash; and the expert's answer has to travel back &mdash; <strong>all-to-all combine</strong>. This happens once per MoE layer.</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>The trip is expensive.</strong> Over InfiniBand, that round trip takes roughly as long as the compute it feeds &mdash; a <strong>~1:1 compute:network ratio</strong>. Run them one after another and the network wait can cost up to <strong>half the step time</strong>.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>It only gets worse at scale.</strong> More fine-grained experts spread across more nodes means more of every token's routing crosses the network &mdash; communication, not FLOPs, threatens to become the ceiling on how far MoE can scale.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">DualPipe (Pipeline Parallelism + Compute/Comm Overlap)</p>
+</section>
+
+<!-- SLIDE 35 — FIX 1/3: EVERY GPU HOLDS TWO STAGES -->
 <section class="slide" id="slide-35" aria-label="The DeepSeek-V3 fix, part 1">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 1/3</p>
-    <h2 class="reveal r2">Bidirectional schedule halves the bubble</h2>
+    <h2 class="reveal r2">Every GPU holds two stages</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
         <ul class="bullet-list">
-          <li class="reveal r2"><strong>Feed micro-batches from both ends simultaneously</strong> &mdash; two streams enter from opposite directions and meet in the middle, each only traversing half the pipeline before overlapping the other stream's work.</li>
-          <li class="reveal r3" style="margin-top: var(--element-gap);">This halves the effective fill/drain depth from <code>(PP&minus;1)</code> to <code>(PP/2&minus;1)</code>.</li>
-          <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>The DualPipe bubble formula:</strong> <code>((PP/2) &minus; 1)(F&amp;B + B &minus; 3W)</code> &mdash; where <code>F&amp;B</code> is the time of two mutually overlapped forward and backward chunks. The <code>PP/2&minus;1</code> factor is the key improvement.</li>
-          <li class="reveal r4" style="margin-top: var(--element-gap);">Enables <strong>both all-to-all and pipeline (PP) communication to be fully hidden</strong> behind computation.</li>
+          <li class="reveal r2"><strong>Feed micro-batches from both ends at once</strong> &mdash; one stream flows left-to-right, a second flows right-to-left, so every GPU is assigned one stage from <strong>each</strong> stream.</li>
+          <li class="reveal r3" style="margin-top: var(--element-gap);">Every micro-batch still crosses <strong>all PP stages</strong> &mdash; nothing about its path is shortened. What changes: whenever one direction would leave a GPU idle, the other direction already has queued work for it.</li>
+          <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>The cost:</strong> each GPU now runs a stage from two directions, so it must hold <strong>two copies of that stage's parameters</strong>.</li>
+          <li class="reveal r4" style="margin-top: var(--element-gap);">Result: the idle fraction roughly halves, from <code>(PP&minus;1)</code> to <code>(PP/2&minus;1)</code>.</li>
         </ul>
       </div>
       <div class="col-figure reveal r4">
@@ -1274,19 +1289,19 @@ a { color: inherit; }
   <p class="footer-cite">DualPipe (Pipeline Parallelism + Compute/Comm Overlap)</p>
 </section>
 
-<!-- SLIDE 36 — FIX 2: COMPUTE-COMM OVERLAP -->
+<!-- SLIDE 36 — FIX 2/3: THE SM-PARTITION OVERLAP -->
 <section class="slide" id="slide-36" aria-label="The DeepSeek-V3 fix, part 2">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 2/3</p>
-    <h2 class="reveal r2">Hide all-to-all behind computation</h2>
+    <h2 class="reveal r2">Network and matmuls, same instant</h2>
     <div class="two-col fig-wide">
       <div class="col-text">
         <ul class="bullet-list">
-          <li class="reveal r2"><strong>Split each chunk into four components</strong> &mdash; attention &rarr; all-to-all dispatch &rarr; MLP &rarr; all-to-all combine. In backward, attention and MLP further split into backward-for-input (B) and backward-for-weights (W), à la ZeroBubble.</li>
-          <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Manually rearrange components</strong> so one micro-batch's compute overlaps another's all-to-all communication.</li>
-          <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>The mechanism: GPU SM-ratio tuning</strong> &mdash; dedicate a small fixed set (<strong>20 SMs</strong>) to run the all-to-all and PP comm kernels <em>concurrently</em> with the rest doing attention/MLP compute. Tune the partition so comm finishes within the compute window.</li>
-          <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Result:</strong> comm runs <strong>in parallel with</strong> (not serially before/after) computation &rarr; <strong>fully hidden</strong>, costing zero extra step time.</li>
+          <li class="reveal r2">A GPU's compute runs on many independent <strong>streaming multiprocessors (SMs)</strong>, each able to run different, unrelated work at once.</li>
+          <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Split each chunk into four pieces</strong> &mdash; attention &rarr; dispatch &rarr; MLP &rarr; combine &mdash; and rearrange them so a fixed <strong>20 SMs</strong> run the network kernels for one micro-batch while the rest compute a <strong>different</strong> micro-batch.</li>
+          <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Why it's legal:</strong> the two pieces touch disjoint data, so neither forces the other to wait.</li>
+          <li class="reveal r4" style="margin-top: var(--element-gap);">The 20-SM partition is tuned so the network kernel finishes within that window, fully hidden.</li>
         </ul>
       </div>
       <div class="col-figure reveal r4">
@@ -1298,16 +1313,59 @@ a { color: inherit; }
   <p class="footer-cite">DualPipe (Pipeline Parallelism + Compute/Comm Overlap)</p>
 </section>
 
-<!-- SLIDE 37 — FIX 3: B/W SPLIT + TRADE-OFF -->
-<section class="slide" id="slide-37" aria-label="The DeepSeek-V3 fix, part 3">
+<!-- SLIDE 44 — FIX 3/3: THE B/W SPLIT -->
+<section class="slide" id="slide-44" aria-label="The DeepSeek-V3 fix, part 3">
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; 3/3</p>
-    <h2 class="reveal r2">ZeroBubble-style backward split + memory trade-off</h2>
+    <h2 class="reveal r2">Urgent gradients versus deferrable ones</h2>
     <ul class="bullet-list reveal r2">
-      <li class="reveal r2"><strong>Why split backward into B and W</strong> &mdash; a normal backward computes input-gradients and weight-gradients together. But the <strong>input-gradient part (B)</strong> is what propagates downstream to earlier stages (on the critical path), while the <strong>weight-gradient part (W)</strong> only updates local parameters (no downstream dependency, can be deferred). Splitting moves W off the critical path, shrinking the bubble &mdash; visible in Table 2 as the <code>&minus;2W</code> (ZB1P) and <code>&minus;3W</code> (DualPipe) terms.</li>
-      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Trade-off:</strong> DualPipe requires <strong>2&times; parameter copies</strong> &mdash; cheap because a large expert-parallelism size means each device only holds a small shard. Activation memory is just <strong>PP+1</strong>.</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Efficient all-to-all implementation</strong> &mdash; node-limited routing (&le; 4 nodes/token) caps IB traffic. <strong>Only 20 SMs</strong> (10 channels, warp-specialized) fully saturate both IB and NVLink regardless of scale, leaving the rest for the compute that comms hide behind.</li>
+      <li class="reveal r2">A normal backward pass computes <strong>input-gradients</strong> and <strong>weight-gradients</strong> together, as one chunk.</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);">The input-gradient part (<strong>B</strong>) propagates downstream to earlier stages &mdash; those stages can't proceed without it, so it's <strong>on the critical path</strong>.</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);">The weight-gradient part (<strong>W</strong>) only updates that stage's own local parameters &mdash; no downstream dependency, so it can be <strong>deferred</strong>.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">Splitting B from W and pushing W off the critical path shrinks the bubble further &mdash; this is what the <code>&minus;2W</code> (ZB1P) and <code>&minus;3W</code> (DualPipe) terms in the bubble formulas capture.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">DualPipe (Pipeline Parallelism + Compute/Comm Overlap)</p>
+</section>
+
+<!-- SLIDE 37 — THE FORMULAS, NOW GROUNDED -->
+<section class="slide" id="slide-37" aria-label="Bubble and memory formulas compared">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; putting it together</p>
+    <h2 class="reveal r2">The formulas, now they mean something</h2>
+    <div class="reveal r2" style="overflow-x: auto;">
+      <table class="apx-table">
+        <thead>
+          <tr><th>Method</th><th>Bubble</th><th class="num">Parameter</th><th class="num">Activation</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1F1B</td><td><code>(PP&minus;1)(F+B)</code></td><td class="num">1&times;</td><td class="num">PP</td></tr>
+          <tr><td>ZB1P</td><td><code>(PP&minus;1)(F+B&minus;2W)</code></td><td class="num">1&times;</td><td class="num">PP</td></tr>
+          <tr class="follows"><td>DualPipe</td><td><code>(PP/2&minus;1)(F&amp;B+B&minus;3W)</code></td><td class="num">2&times;</td><td class="num">PP+1</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="bullet-list reveal r3" style="margin-top: var(--content-gap);">
+      <li class="reveal r3"><code>PP/2&minus;1</code> is the two-direction trick (previous slide); <code>&minus;3W</code> is the deferred-weight-gradient trick (before that); <code>F&amp;B</code> is the time of two mutually overlapped forward and backward chunks.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);">The <strong>2&times;</strong> parameter cost is affordable because a large expert-parallelism size already shards each device down to a small slice of the model.</li>
+    </ul>
+  </div>
+  <p class="footer-cite">DualPipe (Pipeline Parallelism + Compute/Comm Overlap) &middot; DeepSeek-V3 Technical Report, Table 2</p>
+</section>
+
+<!-- SLIDE 45 — MAKING THE OVERLAP WINDOW FIT -->
+<section class="slide" id="slide-45" aria-label="What makes the overlap window fit">
+  <div class="grid-backdrop"></div>
+  <div class="slide-content">
+    <p class="eyebrow reveal">The DeepSeek-V3 fix &middot; making it fit</p>
+    <h2 class="reveal r2">What makes the overlap fit</h2>
+    <ul class="bullet-list reveal r2">
+      <li class="reveal r2">The network transfer only stays hidden if it reliably finishes inside the compute window it's overlapped with &mdash; that takes its own co-design.</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Node-limited routing</strong> (&le; 4 nodes/token) caps how much traffic has to cross the slower InfiniBand link at all.</li>
+      <li class="reveal r3" style="margin-top: var(--element-gap);"><strong>Bandwidth-matched routing:</strong> NVLink (&asymp;160 GB/s) is &asymp;3.2&times; InfiniBand's 50 GB/s, so IB and NVLink transfers pipeline into each other instead of one link idling.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Minimal SM budget:</strong> only <strong>20 SMs</strong> (10 channels, warp-specialized) fully saturate both IB and NVLink &mdash; a small, fixed slice of the GPU, leaving the rest for the compute the network hides behind.</li>
     </ul>
     <div class="stat-row reveal r4" style="margin-top: var(--content-gap);">
       <div class="stat"><div class="stat-num">2&times;</div><div class="stat-label">parameter copies</div></div>
@@ -1323,15 +1381,15 @@ a { color: inherit; }
   <div class="grid-backdrop"></div>
   <div class="slide-content">
     <p class="eyebrow reveal">What it buys us</p>
-    <h2 class="reveal r2">Near-zero all-to-all overhead, scalable MoE</h2>
+    <h2 class="reveal r2">Near-zero overhead, scalable MoE</h2>
     <div class="stat-row reveal r2" style="margin-top: var(--content-gap);">
-      <div class="stat"><div class="stat-num">~0</div><div class="stat-label">all-to-all overhead</div></div>
-      <div class="stat"><div class="stat-num">20 SMs</div><div class="stat-label">comm budget, any scale</div></div>
-      <div class="stat"><div class="stat-num">PP/2&minus;1</div><div class="stat-label">bubble vs PP&minus;1</div></div>
+      <div class="stat"><div class="stat-num">~50%</div><div class="stat-label">step time network could cost, unhidden</div></div>
+      <div class="stat"><div class="stat-num">~0</div><div class="stat-label">step time network costs, hidden</div></div>
+      <div class="stat"><div class="stat-num">20 SMs</div><div class="stat-label">fixed comm budget, any scale</div></div>
     </div>
     <ul class="bullet-list reveal r3" style="font-size: var(--body-size); margin-top: var(--content-gap);">
-      <li class="reveal r3"><strong>Turns the MoE's inherent all-to-all tax</strong> (which would otherwise ~double step time) into <strong>hidden latency</strong>. As long as the compute:comm ratio stays constant, you can keep adding fine-grained experts across nodes without communication becoming the bottleneck &mdash; the enabling piece for training a 671B cross-node MoE efficiently.</li>
-      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Why a DS/DE should care:</strong> At scale, the bottleneck migrates from FLOPs to <strong>data movement</strong> (all-to-all, pipeline bubbles). The winning move isn't to reduce communication so much as to <strong>hide it behind computation</strong> via careful scheduling and decomposition. Whenever you build distributed training/serving, ask what's actually idle and whether it can be overlapped rather than eliminated.</li>
+      <li class="reveal r3"><strong>Turns the MoE's inherent network tax</strong> (which could otherwise cost up to half the step) into <strong>hidden latency</strong> &mdash; work the GPU was going to spend on something anyway. As long as the compute:comm ratio stays constant, you can keep adding fine-grained experts across nodes without communication becoming the bottleneck &mdash; the enabling piece for training a 671B cross-node MoE efficiently.</li>
+      <li class="reveal r4" style="margin-top: var(--element-gap);"><strong>Why a DS/DE should care:</strong> At scale, the bottleneck migrates from FLOPs to <strong>data movement</strong> (all-to-all, pipeline bubbles). The winning move isn't to reduce communication so much as to <strong>hide it behind computation</strong> &mdash; give every device work from a second stream whenever its primary stream would idle it, and dedicate a small fixed slice of compute to the transfer that stream depends on.</li>
     </ul>
   </div>
   <p class="footer-cite">DeepSeek-V3 Technical Report &middot; arXiv:2412.19437 &middot; Section 5 of 5</p>

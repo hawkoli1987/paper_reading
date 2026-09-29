@@ -13,8 +13,10 @@
  *   node render-deck.js <path-to-presentation.html> <output-dir>
  *       [--viewport WxH] [--hide-chrome]
  *
- * --viewport defaults to 1920x1080 (16:9, matches the pptx export's slide
- * aspect ratio so pictures never need distorting to fill the slide).
+ * --viewport defaults to 1440x810 (16:9, matches the pptx export's slide
+ * aspect ratio). 1440 specifically because decks cap `.slide-content` at
+ * max-width:1440px (see templates/deck-base.css) — a wider viewport like
+ * 1920 leaves that cap's slack as dead space on the right of every slide.
  * --hide-chrome hides .keyboard-hint/.nav-dots/.progress-index (meaningless
  * once slides leave the browser) while leaving .footer-cite visible.
  *
@@ -28,7 +30,7 @@ const { findChrome } = require('./lib/find-chrome');
 function parseArgs(argv) {
   const hideChrome = argv.includes('--hide-chrome');
   const positional = [];
-  let viewport = [1920, 1080];
+  let viewport = [1440, 810];
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--viewport') {
       const m = /^(\d+)x(\d+)$/.exec(argv[i + 1] || '');
