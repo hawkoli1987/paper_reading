@@ -6,6 +6,9 @@ scripts/node_modules/
 extracted/*/figures/
 decks/*/*.pptx
 decks/*/qa-screenshots/
+# deck media is embedded in presentation.html by default; decks/*/assets/ stays
+# untracked (the deepseek-v3 deck's assets are intentionally still tracked)
+decks/*/assets/
 __pycache__/
 *.pyc
 
