@@ -1,0 +1,7 @@
+# The final presentation.html is fully self-contained (media is base64-embedded,
+# zero relative file references), so only it is tracked. Everything else in this
+# deck directory — assets/, *_work/ session copies, validation/ suites — is
+# working material and stays untracked.
+/*
+!/presentation.html
+!/.gitignore
